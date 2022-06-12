@@ -1,0 +1,19 @@
+{
+  "name": "dataflow",
+  "version": "1.0.0",
+  "description": "A framework for streaming data",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha"
+  },
+  "author": "Adam Powers <apowers@ato.ms>",
+  "license": "MIT",
+  "devDependencies": {
+    "chai": "^4.3.6",
+    "eslint": "^7.32.0",
+    "eslint-plugin-jsdoc": "^30.7.13",
+    "eslint-plugin-mocha": "^8.2.0",
+    "eslint-plugin-old-c-programmer": "^1.0.1",
+    "mocha": "^10.0.0"
+  }
+}
