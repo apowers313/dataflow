@@ -13,7 +13,12 @@ class TestSource extends DataflowSource {
 
     async pull() {
         console.log("test pull", this.count);
-        // await timeout(500);
+        await timeout(100);
+
+        if (this.count > 10) {
+            return null;
+        }
+
         return {count: this.count++};
     }
 }
@@ -29,8 +34,9 @@ describe("DataflowSource", function() {
         assert.isFunction(DataflowSource);
     });
 
+    it("throws if pull isn't specified");
+
     it("writes data", async function() {
-        console.log("test source");
         let testSource = new TestSource();
         const source = testSource.readableStream;
 
@@ -40,17 +46,15 @@ describe("DataflowSource", function() {
             },
             write: (data) => {
                 console.log("SINK: data", data);
-                // done();
             },
             close: () => {
-                throw new Error("closed");
+                // throw new Error("closed");
             },
             abort: () => {
-                throw new Error("aborted");
+                // throw new Error("aborted");
             },
         });
 
-        console.log("pipeTo");
         return source.pipeTo(testSink);
     });
 });
