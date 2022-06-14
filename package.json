@@ -14,6 +14,7 @@
     "eslint-plugin-jsdoc": "^30.7.13",
     "eslint-plugin-mocha": "^8.2.0",
     "eslint-plugin-old-c-programmer": "^1.0.1",
-    "mocha": "^10.0.0"
+    "mocha": "^10.0.0",
+    "sinon": "^14.0.0"
   }
 }

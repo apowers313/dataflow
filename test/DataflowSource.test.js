@@ -1,60 +1,50 @@
 const {assert} = require("chai");
+const {spy} = require("sinon");
 const {DataflowSource} = require("../index.js");
 const {WritableStream} = require("node:stream/web");
-
-class TestSource extends DataflowSource {
-    constructor() {
-        super({
-            name: "test-source",
-        });
-        this.count = 0;
-        console.log("TestSource.testPull", this.testPull);
-    }
-
-    async pull() {
-        console.log("test pull", this.count);
-        await timeout(100);
-
-        if (this.count > 10) {
-            return null;
-        }
-
-        return {count: this.count++};
-    }
-}
-
-function timeout(ms) {
-    return new Promise((resolve) => {
-        setTimeout(resolve, ms);
-    });
-}
+const {TestSource} = require("./helpers/helpers.js");
 
 describe("DataflowSource", function() {
     it("is a class", function() {
         assert.isFunction(DataflowSource);
     });
 
-    it("throws if pull isn't specified");
-
     it("writes data", async function() {
         let testSource = new TestSource();
-        const source = testSource.readableStream;
+        const writeSpy = spy();
+        const startSpy = spy();
+        const closeSpy = spy();
+        const abortSpy = spy();
 
         let testSink = new WritableStream({
-            start: () => {
-                console.log("SINK: start");
-            },
-            write: (data) => {
-                console.log("SINK: data", data);
-            },
-            close: () => {
-                // throw new Error("closed");
-            },
-            abort: () => {
-                // throw new Error("aborted");
-            },
+            start: startSpy,
+            write: writeSpy,
+            close: closeSpy,
+            abort: abortSpy,
         });
 
-        return source.pipeTo(testSink);
+        await testSource.readableStream.pipeTo(testSink);
+
+        assert.strictEqual(startSpy.callCount, 1);
+        assert.strictEqual(writeSpy.callCount, 11);
+        assert.deepEqual(writeSpy.firstCall.args[0], {data: {count: 0}, type: "data"});
+        assert.deepEqual(writeSpy.lastCall.args[0], {data: {count: 10}, type: "data"});
+        assert.strictEqual(closeSpy.callCount, 1);
+        assert.strictEqual(abortSpy.callCount, 0);
+    });
+
+    it("catches errors");
+
+    describe("pipe", function() {
+        it("pipes to TransformStream and returns chainable");
+        it("pipes to WritableStream and returns Promise");
+    });
+
+    describe("config", function() {
+        it("throws if pull isn't specified");
+        it("start");
+        it("pull");
+        it("close");
+        it("abort");
     });
 });
