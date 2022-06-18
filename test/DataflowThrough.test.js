@@ -42,4 +42,6 @@ describe("DataflowThrough", function() {
         assert.deepEqual(sinkWriteSpy.lastCall.args[0], {count: 9});
         assert.strictEqual(throughFlushSpy.callCount, 1);
     });
+
+    it("pipes through a tee");
 });

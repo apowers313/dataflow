@@ -1,8 +1,10 @@
-const DataflowChunk = require("./lib/DataflowChunk.js");
-const DataflowComponent = require("./lib/DataflowComponent.js");
-const DataflowSource = require("./lib/DataflowSource.js");
-const DataflowThrough = require("./lib/DataflowThrough.js");
-const DataflowSink = require("./lib/DataflowSink.js");
+const DataflowChunk = require("./lib/DataflowChunk");
+const DataflowComponent = require("./lib/DataflowComponent");
+const DataflowSource = require("./lib/DataflowSource");
+const DataflowThrough = require("./lib/DataflowThrough");
+const DataflowSink = require("./lib/DataflowSink");
+const DataflowTee = require("./lib/DataflowTee");
+const utils = require("./lib/utils.js");
 
 module.exports = {
     DataflowChunk,
@@ -10,4 +12,6 @@ module.exports = {
     DataflowSource,
     DataflowThrough,
     DataflowSink,
+    DataflowTee,
+    utils,
 };

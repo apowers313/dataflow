@@ -1,6 +1,6 @@
 const {assert} = require("chai");
 const {spy} = require("sinon");
-const {DataflowSource} = require("../index.js");
+const {DataflowSource, DataflowThrough, DataflowSink} = require("../index.js");
 const {WritableStream} = require("node:stream/web");
 const {TestSource} = require("./helpers/helpers.js");
 
@@ -38,6 +38,33 @@ describe("DataflowSource", function() {
     describe("pipe", function() {
         it("pipes to TransformStream and returns chainable");
         it("pipes to WritableStream and returns Promise");
+    });
+
+    describe("complete", function() {
+        it("handles simple tee", async function() {
+            let src = new TestSource();
+            let sink1 = new DataflowSink({push: () => {}, name: "sink1"});
+            let sink2 = new DataflowSink({push: () => {}, name: "sink2"});
+            let sink3 = new DataflowSink({push: () => {}, name: "sink3"});
+            src.pipe([sink1, sink2, sink3]);
+            await src.complete();
+        });
+
+        it("iterates a complex tree", async function() {
+            let src = new TestSource();
+            let thru1 = new DataflowThrough({through: (msg) => msg, name: "thru1"});
+            let thru2 = new DataflowThrough({through: (msg) => msg, name: "thru2"});
+            let thru3 = new DataflowThrough({through: (msg) => msg, name: "thru3"});
+            let sink1 = new DataflowSink({push: () => {}, name: "sink1"});
+            let sink2 = new DataflowSink({push: () => {}, name: "sink2"});
+            let sink3 = new DataflowSink({push: () => {}, name: "sink3"});
+            let sink4 = new DataflowSink({push: () => {}, name: "sink4"});
+            src.pipe([sink1, thru1, thru2]);
+            thru1.pipe(sink2);
+            thru2.pipe([thru3, sink3]);
+            thru3.pipe(sink4);
+            await src.complete();
+        });
     });
 
     describe("config", function() {
