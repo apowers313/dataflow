@@ -63,7 +63,6 @@ describe("DataflowTee", function() {
         const writeSpy2 = spy();
         const sink2 = new DataflowSink({push: writeSpy2});
         let p = thru.pipe(sink2);
-        console.log("p", p);
 
         let t = new DataflowTee({src: testSource, dst: [sink1, thru]});
         await Promise.all([t.pipeAll(), p]);
