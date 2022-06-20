@@ -7,21 +7,33 @@ function timeout(ms) {
 }
 
 class TestSource extends DataflowSource {
-    constructor() {
+    constructor(opt = {}) {
         super({
             name: "test-source",
         });
-        this.count = 0;
+
+        this.countBy = opt.countBy || 1;
+        this.delay = opt.delay || 0;
+        this.sendNum = opt.sendNum || 10;
+        if (opt.countBy === undefined) {
+            this.count = 0;
+        } else {
+            this.count = opt.countBy;
+        }
     }
 
     async pull() {
-        // await timeout(100);
+        if (this.delay) {
+            await timeout(this.delay);
+        }
 
-        if (this.count > 10) {
+        if (this.count > (this.sendNum * this.countBy)) {
             return null;
         }
 
-        return {count: this.count++};
+        let next = {count: this.count};
+        this.count += this.countBy;
+        return next;
     }
 }
 

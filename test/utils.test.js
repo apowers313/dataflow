@@ -4,7 +4,7 @@ const {utils, DataflowSource, DataflowThrough, DataflowSink} = require("../index
 const {ReadableStream, WritableStream} = require("node:stream/web");
 const {TestSource} = require("./helpers/helpers.js");
 const {walkStream} = require("../lib/utils.js");
-const {isReadable, isWritable, getReadableStream, getWritableStream} = utils;
+const {isReadable, isWritable, getReadableStream, getWritableStream, promiseState} = utils;
 
 describe("utils", function() {
     describe("isReadable", function() {
@@ -135,6 +135,26 @@ describe("utils", function() {
             assert.strictEqual(cb.args[5][0], thru3);
             assert.strictEqual(cb.args[6][0], sink4);
             assert.strictEqual(cb.args[7][0], sink3);
+        });
+    });
+
+    describe("promiseState", function() {
+        it("resolves", async function() {
+            const p = Promise.resolve();
+            const ret = await promiseState(p);
+            assert.strictEqual(ret, "fulfilled");
+        });
+
+        it("rejects", async function() {
+            const p = Promise.reject();
+            const ret = await promiseState(p);
+            assert.strictEqual(ret, "rejected");
+        });
+
+        it("pending", async function() {
+            const p = new Promise(() => {});
+            const ret = await promiseState(p);
+            assert.strictEqual(ret, "pending");
         });
     });
 });
