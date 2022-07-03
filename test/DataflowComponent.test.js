@@ -11,6 +11,31 @@ describe("DataflowComponent", function() {
         assert.isFunction(c.pipe);
     });
 
+    describe("readableMixin", function() {
+        it("adds pipe", function() {
+            let o = {methods: {}};
+            DataflowComponent.readableMixin(o);
+            assert.isFunction(o.pipe);
+        });
+
+        it("adds send", function() {
+            let o = {methods: {}};
+            DataflowComponent.readableMixin(o);
+            assert.isFunction(o.send);
+        });
+
+        describe("channelized", function() {
+            it("doesn't add pipe", function() {
+                let o = {methods: {}, channels: []};
+                DataflowComponent.readableMixin(o);
+                assert.isNotFunction(o.send);
+            });
+
+            it("doesn't add send");
+            it("adds sendToChannel");
+        });
+    });
+
     describe("config", function() {
         it("has default name", function() {
             const c = new DataflowComponent();
@@ -22,4 +47,16 @@ describe("DataflowComponent", function() {
             assert.strictEqual(c.name, "bob");
         });
     });
+
+    describe("log", function() {
+        it("error");
+        it("warn");
+        it("info");
+        it("debug");
+        it("trace");
+    });
+
+    it("has symbol");
+    it("has isReadable");
+    it("has isWritable");
 });

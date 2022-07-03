@@ -33,6 +33,38 @@ describe("DataflowSource", function() {
         assert.strictEqual(abortSpy.callCount, 0);
     });
 
+    it("writes to all outputs", async function() {
+        const src = new DataflowSource({
+            numOutputs: 3,
+            pull: (methods) => {
+                let count = 0;
+                if (count > 10) {
+                    return methods.finished();
+                }
+
+                return count.multiOutputSend();
+            },
+        });
+        const sinkSpy1 = spy();
+        const sink1 = new DataflowSink({push: sinkSpy1});
+        const sinkSpy2 = spy();
+        const sink2 = new DataflowSink({push: sinkSpy2});
+        const sinkSpy3 = spy();
+        const sink3 = new DataflowSink({push: sinkSpy3});
+
+        src.pipeFromChannel(0, sink1);
+        src.pipeFromChannel(1, sink2);
+        src.pipeFromChannel(2, sink3);
+        await src.complete();
+
+        assert.strictEqual(sink1.callCount, 0);
+        assert.strictEqual(sink2.callCount, 11);
+        assert.strictEqual(sink3.callCount, 0);
+    });
+    it("writes to multiple outputs");
+    it("writes to a single output");
+    it("writes even with some outputs not piped to");
+
     it("catches errors");
 
     describe("pipe", function() {

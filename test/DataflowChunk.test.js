@@ -20,4 +20,15 @@ describe("DataflowChunk", function() {
     it("throws on invalid chunk type");
 
     it("creates error chunk on error");
+
+    describe("clone", function() {
+        it("clones a chunk", function() {
+            const d1 = new DataflowChunk({data: "foo"});
+            const d2 = d1.clone();
+
+            assert.notEqual(d1, d2);
+            assert.instanceOf(d1, DataflowChunk);
+            assert.deepEqual(d1.data, d2.data);
+        });
+    });
 });

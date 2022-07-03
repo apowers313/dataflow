@@ -136,6 +136,8 @@ describe("utils", function() {
             assert.strictEqual(cb.args[6][0], sink4);
             assert.strictEqual(cb.args[7][0], sink3);
         });
+
+        it("iterates a tree with multiple sources");
     });
 
     describe("promiseState", function() {

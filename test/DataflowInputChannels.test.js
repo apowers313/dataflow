@@ -1,13 +1,13 @@
 const {assert} = require("chai");
 const {spy} = require("sinon");
-const {DataflowMultiInput, DataflowSink} = require("../index.js");
+const {DataflowInputChannels, DataflowSink} = require("../index.js");
 const {TestSource} = require("./helpers/helpers.js");
 // multiInputFifoOutput
 describe("DataflowMultiInput", function() {
     this.slow(250);
 
     it("is function", function() {
-        assert.isFunction(DataflowMultiInput);
+        assert.isFunction(DataflowInputChannels);
     });
 
     it("merges two streams", async function() {
@@ -17,7 +17,7 @@ describe("DataflowMultiInput", function() {
         const src2 = new TestSource({delay: 13, countBy: 13, sendNum: 5});
         const sinkSpy = spy();
         const sink = new DataflowSink({push: sinkSpy});
-        const mi = new DataflowMultiInput({src: [src1, src2], dst: sink});
+        const mi = new DataflowInputChannels({src: [src1, src2], dst: sink});
         await mi.pipeAll();
         assert.strictEqual(sinkSpy.callCount, 10);
         let args = sinkSpy.args.map((a) => a[0]);
@@ -43,7 +43,7 @@ describe("DataflowMultiInput", function() {
         const src2 = new TestSource({delay: 13, countBy: 13, sendNum: 5});
         const sinkSpy = spy();
         const sink = new DataflowSink({push: sinkSpy});
-        const mi = new DataflowMultiInput({src: [src1, src2], dst: sink, mode: "zipper"});
+        const mi = new DataflowInputChannels({src: [src1, src2], dst: sink, mode: "zipper"});
         await mi.pipeAll();
         assert.strictEqual(sinkSpy.callCount, 10);
         let args = sinkSpy.args.map((a) => a[0]);
@@ -69,7 +69,7 @@ describe("DataflowMultiInput", function() {
         const src2 = new TestSource({delay: 13, countBy: 13, sendNum: 5});
         const sinkSpy = spy();
         const sink = new DataflowSink({push: sinkSpy});
-        const mi = new DataflowMultiInput({src: [src1, src2], dst: sink, mode: "batch"});
+        const mi = new DataflowInputChannels({src: [src1, src2], dst: sink, mode: "batch"});
         await mi.pipeAll();
 
         let args = sinkSpy.args.map((a) => a[0]);

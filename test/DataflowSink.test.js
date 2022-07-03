@@ -28,6 +28,8 @@ describe("DataflowSink", function() {
 
     it("doesn't support pipe");
 
+    it("adds to pendingPromises");
+
     describe("config", function() {
         it("throws on no push");
         it("pushes errors and metadata if 'allChunks' is true");
