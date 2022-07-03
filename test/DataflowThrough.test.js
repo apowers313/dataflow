@@ -1,7 +1,6 @@
 const {assert} = require("chai");
 const {spy} = require("sinon");
 const {DataflowThrough, DataflowSink} = require("../index.js");
-const {WritableStream} = require("node:stream/web");
 const {TestSource} = require("./helpers/helpers.js");
 
 describe("DataflowThrough", function() {

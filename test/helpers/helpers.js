@@ -60,7 +60,7 @@ class TestRoute extends DataflowSource {
         return this.normalPull(methods);
     }
 
-    async roundRobinPull(methods) {
+    async roundRobinPull() {
         let chNum = this.count % this.numOutputs;
 
         const next = {count: this.count};
@@ -68,11 +68,7 @@ class TestRoute extends DataflowSource {
         await this.output.channels[chNum].send(next);
     }
 
-    async normalPull(methods) {
-        if (this.count > 10) {
-            methods.finished();
-        }
-
+    async normalPull() {
         const next = {count: this.count};
         this.count++;
         await this.output.channels[this.outputChan].send(next);
