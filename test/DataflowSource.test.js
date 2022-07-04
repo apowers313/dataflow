@@ -34,15 +34,17 @@ describe("DataflowSource", function() {
     });
 
     it("writes to all outputs", async function() {
+        let count = 0;
         const src = new DataflowSource({
             numOutputs: 3,
-            pull: (methods) => {
-                let count = 0;
+            pull: async(methods) => {
                 if (count > 10) {
                     return methods.finished();
                 }
 
-                return count.multiOutputSend();
+                let next = {count};
+                await methods.sendChunksToChannel([null, next, null]);
+                count++;
             },
         });
         const sinkSpy1 = spy();
@@ -52,15 +54,16 @@ describe("DataflowSource", function() {
         const sinkSpy3 = spy();
         const sink3 = new DataflowSink({push: sinkSpy3});
 
-        src.pipeFromChannel(0, sink1);
-        src.pipeFromChannel(1, sink2);
-        src.pipeFromChannel(2, sink3);
+        src.output.channels[0].pipe(sink1);
+        src.output.channels[1].pipe(sink2);
+        src.output.channels[2].pipe(sink3);
         await src.complete();
 
-        assert.strictEqual(sink1.callCount, 0);
-        assert.strictEqual(sink2.callCount, 11);
-        assert.strictEqual(sink3.callCount, 0);
+        assert.strictEqual(sinkSpy1.callCount, 0);
+        assert.strictEqual(sinkSpy2.callCount, 11);
+        assert.strictEqual(sinkSpy3.callCount, 0);
     });
+
     it("writes to multiple outputs");
     it("writes to a single output");
     it("writes even with some outputs not piped to");
@@ -87,15 +90,29 @@ describe("DataflowSource", function() {
             let thru1 = new DataflowThrough({through: (msg) => msg, name: "thru1"});
             let thru2 = new DataflowThrough({through: (msg) => msg, name: "thru2"});
             let thru3 = new DataflowThrough({through: (msg) => msg, name: "thru3"});
-            let sink1 = new DataflowSink({push: () => {}, name: "sink1"});
-            let sink2 = new DataflowSink({push: () => {}, name: "sink2"});
-            let sink3 = new DataflowSink({push: () => {}, name: "sink3"});
-            let sink4 = new DataflowSink({push: () => {}, name: "sink4"});
+            let sinkSpy1 = spy();
+            let sink1 = new DataflowSink({push: sinkSpy1, name: "sink1"});
+            let sinkSpy2 = spy();
+            let sink2 = new DataflowSink({push: sinkSpy2, name: "sink2"});
+            let sinkSpy3 = spy();
+            let sink3 = new DataflowSink({push: sinkSpy3, name: "sink3"});
+            let sinkSpy4 = spy();
+            let sink4 = new DataflowSink({push: sinkSpy4, name: "sink4"});
             src.pipe([sink1, thru1, thru2]);
             thru1.pipe(sink2);
             thru2.pipe([thru3, sink3]);
             thru3.pipe(sink4);
+            // src.pipe(thru1);
+            // thru1.pipe(thru2);
+            // thru2.pipe(thru3);
+            // thru3.pipe(sink1);
             await src.complete();
+
+            // TODO: test results
+            assert.strictEqual(sinkSpy1.callCount, 11);
+            assert.strictEqual(sinkSpy2.callCount, 11);
+            assert.strictEqual(sinkSpy3.callCount, 11);
+            assert.strictEqual(sinkSpy4.callCount, 11);
         });
     });
 

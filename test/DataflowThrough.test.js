@@ -43,4 +43,5 @@ describe("DataflowThrough", function() {
     });
 
     it("pipes through a tee");
+    it("handles multi input, channelized and mirrored output");
 });

@@ -8,10 +8,10 @@ describe("DataflowRoutedOutput", function() {
         assert.isFunction(DataflowRoutedOutput);
     });
 
-    describe("route", function() {
+    describe.skip("route", function() {
         it("throws if data is not DataflowChannelizedChunks");
 
-        it.only("to two sinks", async function() {
+        it("to two sinks", async function() {
             const testSource = new TestRoute({numOutputs: 2});
             const writeSpy1 = spy();
             const sink1 = new DataflowSink({push: writeSpy1});
@@ -81,6 +81,10 @@ describe("DataflowRoutedOutput", function() {
 
         it("errors if no channels piped");
         it("errors if sending to a non-piped channel");
+        it("can send if a channel is un-piped");
+        it("can send to mirrored output");
+        it("errors if sendChunksToOutput is too large for number of channels");
+        it("errors if sendChunksToOutput is too small for number of channels");
     });
 
     it("routes the input to the correct output");

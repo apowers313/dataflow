@@ -110,6 +110,10 @@ describe("utils", function() {
             assert.strictEqual(cb.args[3][0], sink3);
         });
 
+        it("walks multi-input");
+        it("walks channelized output");
+        it("walks mirrored and channelized output");
+
         it("iterates a complex tree", function() {
             let src = new TestSource();
             let thru1 = new DataflowThrough({through: (msg) => msg, name: "thru1"});

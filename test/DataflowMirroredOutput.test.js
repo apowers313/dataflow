@@ -16,9 +16,8 @@ describe("DataflowMirroredOutput", function() {
             const writeSpy2 = spy();
             const sink2 = new DataflowSink({push: writeSpy2});
 
-            let t = new DataflowMirroredOutput({src: testSource, dst: [sink1, sink2]});
-            await t.runPipe();
-            // await testSource.complete();
+            new DataflowMirroredOutput({src: testSource, dst: [sink1, sink2]});
+            await testSource.complete();
 
             assert.strictEqual(writeSpy1.callCount, 11);
             assert.deepEqual(writeSpy1.firstCall.args[0], {count: 0});
@@ -67,7 +66,6 @@ describe("DataflowMirroredOutput", function() {
             assert.strictEqual(writeSpy1.callCount, 11);
             assert.deepEqual(writeSpy1.firstCall.args[0], {count: 0});
             assert.deepEqual(writeSpy1.lastCall.args[0], {count: 10});
-            console.log("writeSpy2 args", writeSpy2.args);
             assert.strictEqual(writeSpy2.callCount, 11);
             assert.deepEqual(writeSpy2.firstCall.args[0], {count: 0});
             assert.deepEqual(writeSpy2.lastCall.args[0], {count: 10});

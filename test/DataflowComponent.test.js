@@ -6,11 +6,6 @@ describe("DataflowComponent", function() {
         assert.isFunction(DataflowComponent);
     });
 
-    it("has pipe method", function() {
-        const c = new DataflowComponent();
-        assert.isFunction(c.pipe);
-    });
-
     describe("readableMixin", function() {
         it("adds pipe", function() {
             let o = {methods: {}};
@@ -25,12 +20,7 @@ describe("DataflowComponent", function() {
         });
 
         describe("channelized", function() {
-            it("doesn't add pipe", function() {
-                let o = {methods: {}, channels: []};
-                DataflowComponent.readableMixin(o);
-                assert.isNotFunction(o.send);
-            });
-
+            it("doesn't add pipe");
             it("doesn't add send");
             it("adds sendToChannel");
         });

@@ -12,8 +12,9 @@ describe("DataflowSink", function() {
         const testSource = new TestSource();
         const writeSpy = spy();
         const testSink = new DataflowSink({push: writeSpy});
+        testSource.pipe(testSink);
 
-        await testSource.pipe(testSink);
+        await testSource.complete();
 
         assert.strictEqual(writeSpy.callCount, 11);
         assert.deepEqual(writeSpy.firstCall.args[0], {count: 0});

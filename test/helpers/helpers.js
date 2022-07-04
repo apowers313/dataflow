@@ -28,12 +28,14 @@ class TestSource extends DataflowSource {
         }
 
         if (this.count > (this.sendNum * this.countBy)) {
-            return methods.finished();
+            console.log("finished");
+            await methods.finished();
+            return;
         }
 
         let next = {count: this.count};
         this.count += this.countBy;
-        return next;
+        methods.send(next);
     }
 }
 

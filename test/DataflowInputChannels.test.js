@@ -3,22 +3,22 @@ const {spy} = require("sinon");
 const {DataflowInputChannels, DataflowSink} = require("../index.js");
 const {TestSource} = require("./helpers/helpers.js");
 // multiInputFifoOutput
-describe("DataflowMultiInput", function() {
+describe("DataflowInputChannels", function() {
     this.slow(250);
+    this.retries(4);
 
     it("is function", function() {
         assert.isFunction(DataflowInputChannels);
     });
 
     it("merges two streams", async function() {
-        this.retries(4);
-
         const src1 = new TestSource({delay: 5, countBy: 5, sendNum: 5});
         const src2 = new TestSource({delay: 13, countBy: 13, sendNum: 5});
         const sinkSpy = spy();
         const sink = new DataflowSink({push: sinkSpy});
         const mi = new DataflowInputChannels({src: [src1, src2], dst: sink});
-        await mi.pipeAll();
+        await mi.runPipe();
+        // await Promise.all([src1.complete(), src2.complete()]);
         assert.strictEqual(sinkSpy.callCount, 10);
         let args = sinkSpy.args.map((a) => a[0]);
 
@@ -37,14 +37,12 @@ describe("DataflowMultiInput", function() {
     });
 
     it("zipper merges two streams", async function() {
-        this.retries(4);
-
         const src1 = new TestSource({delay: 5, countBy: 5, sendNum: 5});
         const src2 = new TestSource({delay: 13, countBy: 13, sendNum: 5});
         const sinkSpy = spy();
         const sink = new DataflowSink({push: sinkSpy});
         const mi = new DataflowInputChannels({src: [src1, src2], dst: sink, mode: "zipper"});
-        await mi.pipeAll();
+        await mi.runPipe();
         assert.strictEqual(sinkSpy.callCount, 10);
         let args = sinkSpy.args.map((a) => a[0]);
 
@@ -63,14 +61,12 @@ describe("DataflowMultiInput", function() {
     });
 
     it("batch merges two streams", async function() {
-        this.retries(4);
-
         const src1 = new TestSource({delay: 5, countBy: 5, sendNum: 5});
         const src2 = new TestSource({delay: 13, countBy: 13, sendNum: 5});
         const sinkSpy = spy();
         const sink = new DataflowSink({push: sinkSpy});
         const mi = new DataflowInputChannels({src: [src1, src2], dst: sink, mode: "batch"});
-        await mi.pipeAll();
+        await mi.runPipe();
 
         let args = sinkSpy.args.map((a) => a[0]);
 
