@@ -28,7 +28,6 @@ class TestSource extends DataflowSource {
         }
 
         if (this.count > (this.sendNum * this.countBy)) {
-            console.log("finished");
             await methods.finished();
             return;
         }
