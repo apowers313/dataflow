@@ -12,3 +12,4 @@ Untitled*.ipynb
 .nyc_output/
 coverage
 tmp/
+build/
