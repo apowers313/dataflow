@@ -17,8 +17,12 @@ class WalkContext {
     history: Set<Component> = new Set();
     remaining: Set<Component> = new Set();
 
-    alreadyDone(c: Component): boolean {
-        return this.history.has(c);
+    // alreadyDone(c: Component): boolean {
+    //     return this.history.has(c);
+    // }
+
+    done(c: Component) {
+        this.history.add(c);
     }
 
     add(component: Component | Array<Component>) {
@@ -27,14 +31,21 @@ class WalkContext {
         }
 
         component.forEach((c) => {
+            console.log("history.has", c.name, this.history.has(c));
             if (!this.history.has(c)) {
+                console.log("adding", c.name);
                 this.remaining.add(c);
             }
         });
     }
 
-    get(): Component {
+    get(): Component | null {
         const [ret] = this.remaining;
+
+        if (!ret) {
+            return null;
+        }
+
         this.remaining.delete(ret);
         return ret;
     }
@@ -43,6 +54,7 @@ class WalkContext {
 export type WalkCallbackFn = (c: Component) => void;
 
 export function walkStream(c: Component, cb: WalkCallbackFn, ctx?: WalkContext) {
+    console.log("WALKING:", c.name);
     if (!ctx) {
         ctx = new WalkContext();
     }
@@ -55,6 +67,14 @@ export function walkStream(c: Component, cb: WalkCallbackFn, ctx?: WalkContext) 
         ctx.add(c.srcs);
     }
 
+    cb(c);
+    ctx.done(c);
+
     const next = ctx.get();
+    if (!next) {
+        console.log("no next, done");
+        return;
+    }
+
     walkStream(next, cb, ctx);
 }

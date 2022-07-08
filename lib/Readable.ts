@@ -22,8 +22,6 @@ export function Readable<TBase extends Constructor<Component>>(Base: TBase) {
         readonly isReadable = true;
         numOutputs = 1;
         outputs: Array<OutputChannel>;
-        // TODO: this should be a getter
-        dests: Array<ReadableType> = [];
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         constructor(... args: any[]) {
@@ -32,7 +30,18 @@ export function Readable<TBase extends Constructor<Component>>(Base: TBase) {
             const opts: ReadableOpts = args[0] ?? {};
 
             this.numOutputs = opts.numOutputs ?? this.numOutputs;
-            this.outputs = new Array(this.numOutputs).map((o: unknown, idx: number) => new OutputChannel({chNum: idx, parent: this}));
+            this.outputs = new Array(this.numOutputs)
+                .fill(null)
+                .map((_o: unknown, idx: number) => new OutputChannel({chNum: idx, parent: this}));
+        }
+
+        get dests(): Array<WritableType> {
+            let ret: Array<WritableType> = [];
+            this.outputs.forEach((c) => {
+                ret = ret.concat(c.dests);
+            });
+
+            return ret;
         }
     };
 }
