@@ -1,7 +1,7 @@
 import {Chunk} from "../index";
 import {assert} from "chai";
 
-describe("DataflowChunk", function() {
+describe("Chunk", function() {
     it("is a class", function() {
         assert.isFunction(Chunk);
     });

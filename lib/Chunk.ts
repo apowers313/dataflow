@@ -2,19 +2,36 @@
 export type ChunkData = Record<string, any>;
 export type ChunkType = "data" | "error" | "metadata";
 
-export interface ChunkOptions {
-    data?: ChunkData;
-    error?: Error;
-    type?: ChunkType;
+export interface DataChunkOptions {
+    data: ChunkData;
+}
+
+export interface ErrorChunkOptions {
+    data: ChunkData;
+    error: Error;
+}
+
+export interface Chunk extends DataChunk, ErrorChunk, MetadataChunk {}
+export class Chunk {
+    isData(): this is DataChunk {
+        return this.type === "data";
+    }
+
+    isError(): this is ErrorChunk {
+        return this.type === "error";
+    }
+
+    isMetadata(): this is MetadataChunk {
+        return this.type === "metadata";
+    }
 }
 
 /**
  * Represents a blob of any data. Data is always an Object
  */
-export class Chunk {
-    data: ChunkData | undefined;
-    error: Error | undefined;
-    type: ChunkType;
+export class DataChunk {
+    data: ChunkData = {};
+    type: ChunkType = "data";
 
     /**
      * Creates a new Chunk of data
@@ -22,18 +39,11 @@ export class Chunk {
      * @param opt The configuration options of this chunk
      * @returns Chunk
      */
-    constructor(opt: ChunkOptions = {}) {
-        this.type = opt.type ?? "data";
-        this.data = opt.data ?? {};
+    constructor(opt: DataChunkOptions) {
+        this.data = opt.data ?? this.data;
 
-        if (opt.data instanceof Chunk) {
+        if (opt.data instanceof DataChunk) {
             return opt.data;
-        }
-
-        if (opt.error instanceof Error) {
-            this.error = opt.error;
-            this.type = "error";
-            return this;
         }
     }
 
@@ -41,10 +51,35 @@ export class Chunk {
      * Creates an identical but different version of this Chunk
      */
     clone() {
-        return new Chunk({
+        return new DataChunk({
             data: structuredClone(this.data),
-            type: this.type,
-            error: this.error,
         });
     }
+}
+
+/**
+ * Represents data that has become an error
+ */
+export class ErrorChunk {
+    data: ChunkData;
+    error: Error;
+    type: ChunkType = "error";
+
+    /**
+     * Creates a new Chunk of data
+     *
+     * @param opt The configuration options of this chunk
+     * @returns Chunk
+     */
+    constructor(opt: ErrorChunkOptions) {
+        this.error = opt.error;
+        this.data = opt.data;
+    }
+}
+
+/**
+ * Represents metadata about a stream
+ */
+export class MetadataChunk {
+    type: ChunkType = "metadata";
 }

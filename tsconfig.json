@@ -1,9 +1,10 @@
 {
     "include": [
+        ".eslintrc.js",
         "index.ts",
         "lib/**/*",
         "test/**/*"
-, "test-old/helpers"    ],
+    ],
     "exclude": [
         "node_modules"
     ],

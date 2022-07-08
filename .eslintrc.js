@@ -36,6 +36,8 @@ module.exports = {
         "no-dupe-class-members": "off",
         "@typescript-eslint/no-dupe-class-members": ["error"],
         "prefer-spread": ["off"],
+        "no-redeclare": "off",
+        "@typescript-eslint/no-empty-interface": ["error", {allowSingleExtends: true}],
         // TODO: turn these off
         "@typescript-eslint/no-var-requires": "off",
         "@typescript-eslint/no-unsafe-assignment": "off",

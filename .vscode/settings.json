@@ -9,5 +9,7 @@
     "eslint.validate": [
         "javascript",
         "typescript"
-    ]
+    ],
+    "mochaExplorer.require": "ts-node/register",
+    "mochaExplorer.files": "test/**/*.test.ts"
 }
