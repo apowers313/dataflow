@@ -2,7 +2,7 @@ import {Readable, ReadableOpts} from "./Readable";
 import {Writable, WritableOpts} from "./Writable";
 import {Component} from "./Component";
 
-interface ThroughOpts extends ReadableOpts, Omit<WritableOpts, "push"> {}
+interface ThroughOpts extends Omit<ReadableOpts, "pull">, Omit<WritableOpts, "push"> {}
 
 /**
  * A component that reads data from a input, acts on it, and then passes it to an output

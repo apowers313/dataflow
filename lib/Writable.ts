@@ -16,9 +16,7 @@ export interface WritableOpts extends ComponentOpts {
     push: PushFn;
 }
 
-export interface WriteMethods {
-    send?: () => Promise<void>
-}
+export interface WriteMethods {}
 
 /**
  * Applies the Writer mixin to a base class
@@ -61,7 +59,7 @@ export function Writable<TBase extends Constructor<Component>>(Base: TBase) {
                     }
 
                     // console.log(`sink '${this.name}':`, chunk.data);
-                    if (chunk.type === "data") {
+                    if (chunk.isData()) {
                         await this.push(chunk.data, this.methods);
                     }
                 },
@@ -70,10 +68,15 @@ export function Writable<TBase extends Constructor<Component>>(Base: TBase) {
             });
         }
 
+        async init() {
+            await super.init();
+        }
+
         addSource(src: ReadableType) {
             this.srcs.push(src);
         }
     };
 }
 
+// TODO: InstanceType<Type>
 export class WritableType extends Writable(Component) {}

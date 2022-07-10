@@ -1,4 +1,4 @@
-import {Chunk} from "../index";
+import {Chunk, DataChunk} from "../index";
 import {assert} from "chai";
 
 describe("Chunk", function() {
@@ -7,13 +7,13 @@ describe("Chunk", function() {
     });
 
     it("creates a data chunk by default", function() {
-        const data = new Chunk();
+        const data = Chunk.create();
         assert.strictEqual(data.type, "data");
     });
 
     it("returns existing chunk if data is a DataflowChunk", function() {
-        const d1 = new Chunk({data: {foo: "bar"}});
-        const d2 = new Chunk({data: d1});
+        const d1 = Chunk.create({type: "data", data: {foo: "bar"}});
+        const d2 = Chunk.create({type: "data", data: d1});
         assert.strictEqual(d1, d2);
     });
 
@@ -23,12 +23,12 @@ describe("Chunk", function() {
 
     describe("clone", function() {
         it("duplicates a chunk", function() {
-            const d1 = new Chunk({data: {foo: "bar"}});
-            const d2 = d1.clone();
+            const d1 = Chunk.create({type: "data", data: {foo: "bar"}});
+            const d2 = (d1 as DataChunk).clone();
 
             assert.notEqual(d1, d2);
             assert.instanceOf(d1, Chunk);
-            assert.deepEqual(d1.data, d2.data);
+            assert.deepEqual((d1 as DataChunk).data, (d2 as DataChunk).data);
         });
 
         it("duplicates really weird objects");

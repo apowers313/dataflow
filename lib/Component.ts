@@ -36,4 +36,10 @@ export class Component {
         this.name = opts.name ?? this.name;
         this.log = opts.log ?? this.log;
     }
+
+    /**
+     * initializes the component
+     */
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    async init() {}
 }
