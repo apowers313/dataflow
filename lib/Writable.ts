@@ -4,18 +4,18 @@ import type {ReadableType} from "./Readable";
 import {WritableStream} from "node:stream/web";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Constructor<T = Record<any, any>> = new (... args: any[]) => T;
+type Constructor<T = Record<any, any>> = abstract new (... args: any[]) => T;
 
 type PushFn = (data: ChunkData, methods: WriteMethods) => Promise<void>
 
 export interface WritableOpts extends ComponentOpts {
-    numInputs?: number;
     start?: (controller: WritableStreamDefaultController) => void;
     close?: () => void;
     abort?: () => void;
     push: PushFn;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface WriteMethods {}
 
 /**
@@ -24,15 +24,16 @@ export interface WriteMethods {}
  * @param Base The base class the mixin will be applied to
  * @returns Writer
  */
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function Writable<TBase extends Constructor<Component>>(Base: TBase) {
-    return class Writer extends Base {
+    abstract class Writer extends Base {
         readonly isWritable = true;
         numInputs = 0;
         push: PushFn;
         writableStream: WritableStream;
         controller?: WritableStreamDefaultController;
         methods: WriteMethods = {};
-        srcs: Array<ReadableType> = [];
+        inputs: Array<InputChannel> = [];
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         constructor(... args: any[]) {
@@ -41,21 +42,16 @@ export function Writable<TBase extends Constructor<Component>>(Base: TBase) {
             const cfg: WritableOpts = args[0] ?? {};
 
             this.push = cfg.push;
-            this.numInputs = cfg.numInputs ?? this.numInputs;
             this.writableStream = new WritableStream({
-                start: (controller) => {
+                start: (controller): void => {
                     this.controller = controller;
                     if (typeof cfg.start === "function") {
                         cfg.start(controller);
                     }
                 },
-                write: async(chunk) => {
+                write: async(chunk): Promise<void> => {
                     if (!(chunk instanceof Chunk)) {
                         throw new TypeError("DataflowSink: expected write data to be instance of DataflowChunk");
-                    }
-
-                    if (chunk.type !== "data") {
-                        return;
                     }
 
                     // console.log(`sink '${this.name}':`, chunk.data);
@@ -68,15 +64,79 @@ export function Writable<TBase extends Constructor<Component>>(Base: TBase) {
             });
         }
 
-        async init() {
-            await super.init();
+        async init(): Promise<void> {
+            const promises = this.inputs.map((i) => {
+                return i.init();
+            });
+            promises.push(this.#run());
+
+            await Promise.all(promises);
         }
 
-        addSource(src: ReadableType) {
-            this.srcs.push(src);
+        // eslint-disable-next-line jsdoc/require-jsdoc
+        async #run(): Promise<void> {
+            console.log("writable stream running");
         }
-    };
+
+        connect(src: ReadableType) {
+            const ic = new InputChannel({});
+            this.inputs.push(ic);
+            return ic.getWriter();
+        }
+
+        get srcs(): Array<ReadableType> {
+            return this.inputs.map((i) => i.source);
+        }
+    }
+
+    return Writer;
 }
 
-// TODO: InstanceType<Type>
+interface InputChannelOpts {
+    push: PushFn;
+    source: ReadableType;
+}
+
+export class InputChannel {
+    #writableStream: WritableStream;
+    push: PushFn;
+    source: ReadableType;
+    controller?: WritableStreamDefaultController;
+    methods: WriteMethods = {};
+
+    constructor(opts: InputChannelOpts) {
+        this.writableStream = new WritableStream({
+            start: (controller): void => {
+                this.controller = controller;
+                if (typeof cfg.start === "function") {
+                    cfg.start(controller);
+                }
+            },
+            write: async(chunk): Promise<void> => {
+                if (!(chunk instanceof Chunk)) {
+                    throw new TypeError("DataflowSink: expected write data to be instance of DataflowChunk");
+                }
+
+                // console.log(`sink '${this.name}':`, chunk.data);
+                if (chunk.isData()) {
+                    await this.push(chunk.data, this.methods);
+                }
+            },
+        });
+    }
+
+    async init(): Promise<void> {
+        return pipePromise;
+    }
+
+    getWriter() {
+        return this.#writableStream.getWriter();
+    }
+
+    getReader() {
+
+    }
+}
+
+// export type WritableType = InstanceType<ReturnType<typeof Writable>>
 export class WritableType extends Writable(Component) {}

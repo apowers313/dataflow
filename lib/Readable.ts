@@ -4,7 +4,7 @@ import {ReadableStream} from "node:stream/web";
 import type {WritableType} from "./Writable";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Constructor<T = Record<any, any>> = new (... args: any[]) => T;
+type Constructor<T = Record<any, any>> = abstract new (... args: any[]) => T;
 
 export type PullFn = (methods: ReadMethods) => Promise<void>
 
@@ -16,9 +16,7 @@ export interface ReadableOpts extends ComponentOpts {
     pull: PullFn;
 }
 
-type SendToFn = (chNum: number, data: Chunk | ChunkData) => Promise<void>
-type SendSingleOuputFn = (data: Chunk | ChunkData) => Promise<void>
-type SendFn = SendToFn | SendSingleOuputFn
+type SendFn = (chNum: number, data: Chunk | ChunkData) => Promise<void>
 type SendReadyFn = () => Promise<void>
 
 export interface ReadMethods {
@@ -32,18 +30,19 @@ export interface ReadMethods {
  * @param Base The base class the mixin will be applied to
  * @returns Reader
  */
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function Readable<TBase extends Constructor<Component>>(Base: TBase) {
     /**
      * Creates a stream that can be read from
      */
-    return class Reader extends Base {
+    abstract class Reader extends Base {
         readonly isReadable = true;
         numOutputs = 1;
         outputs: Array<OutputChannel>;
         controller?: ReadableStreamDefaultController;
-        readableStream: ReadableStream;
         methods: ReadMethods = {
-            send: async(data: ChunkData) => {
+            send: async(_chNum, data) => {
+                console.log("not using chNum, please fix", _chNum);
                 data = Chunk.create({type: "data", data});
                 this.controller!.enqueue(data);
             },
@@ -53,6 +52,8 @@ export function Readable<TBase extends Constructor<Component>>(Base: TBase) {
         };
 
         #pull: PullFn;
+        #reader: ReadableStreamDefaultReader;
+        #readableStream: ReadableStream;
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         constructor(... args: any[]) {
@@ -67,24 +68,52 @@ export function Readable<TBase extends Constructor<Component>>(Base: TBase) {
                 .fill(null)
                 .map((_o: unknown, idx: number) => new OutputChannel({chNum: idx, parent: this}));
 
-            const streamCfg = {
-                start: (controller: ReadableStreamDefaultController) => {
+            this.#readableStream = new ReadableStream({
+                start: (controller): void => {
                     this.controller = controller;
                     if (typeof cfg.start === "function") {
                         cfg.start(controller);
                     }
                 },
-                pull: async() => {
+                pull: async(): Promise<void> => {
                     return this.#pull(this.methods);
                 },
                 cancel: cfg.cancel,
-            };
-
-            this.readableStream = new ReadableStream(streamCfg);
+            });
+            this.#reader = this.#readableStream.getReader();
         }
 
-        async init() {
-            await super.init();
+        async init(): Promise<void> {
+            return this.#run();
+        }
+
+        // eslint-disable-next-line jsdoc/require-jsdoc
+        async #run(): Promise<void> {
+            const doWrite = async(): Promise<void> => {
+                const streamData = await this.#reader.read();
+                console.log("readable stream got data");
+
+                if (streamData.done) {
+                    console.log("readable stream done");
+                    await (this.sendReady());
+                    return;
+                }
+
+                console.log("readable stream ignoring data");
+            };
+
+            return this.sendReady().then(doWrite);
+        }
+
+        async sendReady(): Promise<void> {
+            const outputsReady = this.outputs.map((o) => {
+                return o.outputReady();
+            });
+
+            // TODO: this might be more effecient as a Promise.race()
+            // and then the sender has to await the specific output before
+            // sending another chunk
+            await Promise.all(outputsReady);
         }
 
         get dests(): Array<WritableType> {
@@ -95,7 +124,8 @@ export function Readable<TBase extends Constructor<Component>>(Base: TBase) {
 
             return ret;
         }
-    };
+    }
+    return Reader;
 }
 
 export interface OutputChannelOpts {
@@ -111,6 +141,8 @@ export class OutputChannel {
     parent: ReadableType;
     dests: Array<WritableType> = [];
 
+    #writers: Array<WritableStreamDefaultWriter> = [];
+
     /**
      * Creates a new output stream
      *
@@ -121,18 +153,40 @@ export class OutputChannel {
         this.parent = opt.parent;
     }
 
-    pipe(dst: WritableType | Array<WritableType>) {
+    pipe(dst: WritableType | Array<WritableType>): void {
         if (!Array.isArray(dst)) {
             dst = [dst];
         }
 
-        dst.forEach((d) => {
-            d.addSource(this.parent);
+        const writers = dst.map((d) => {
+            return d.connect(this.parent);
         });
 
         this.dests = this.dests.concat(dst);
+        this.#writers = this.#writers.concat(writers);
+    }
+
+    init() {}
+
+    async outputReady(): Promise<void> {
+        return Promise.all(this.#writers);
     }
 }
 
-// TODO: InstanceType<Type>
-export class ReadableType extends Readable(Component) {}
+class OutputStream {
+    dest: WritableType;
+    #readableStream: ReadableStream;
+
+    constructor(dest: WritableType) {
+        this.#readableStream = new ReadableStream({});
+        this.dest = dest;
+        // destWriter
+    }
+
+    async init() {
+        return this.#readableStream.pipeTo(this.dest.getStream());
+    }
+}
+
+export type ReadableType = InstanceType<ReturnType<typeof Readable>>
+// export class ReadableType extends Readable(Component) {}

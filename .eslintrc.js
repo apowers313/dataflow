@@ -18,6 +18,8 @@ module.exports = {
     ],
     rules: {
         "@typescript-eslint/no-floating-promises": "error",
+        "@typescript-eslint/no-inferrable-types": "error",
+        "@typescript-eslint/explicit-function-return-type": "error",
         "jsdoc/require-param-type": "off",
         "jsdoc/require-returns-type": "off",
         "sort-imports": ["error", {

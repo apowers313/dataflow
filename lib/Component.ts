@@ -14,7 +14,7 @@ export interface ComponentOpts {
 /**
  * The base component
  */
-export class Component {
+export abstract class Component {
     readonly isReadable: boolean = false;
     readonly isWritable: boolean = false;
     readonly sym = DataflowSymbol;
@@ -40,6 +40,5 @@ export class Component {
     /**
      * initializes the component
      */
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
-    async init() {}
+    abstract init(): Promise<void>
 }
