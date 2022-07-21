@@ -2,16 +2,27 @@ import type {Component} from "./Component";
 import type {ReadableType} from "./Readable";
 import type {WritableType} from "./Writable";
 
+/**
+ * Indicates whether the specified componant can be read from (provides data).
+ * Is also a TypeScript type guard for the ReadableType.
+ *
+ * @param c - A Component (Source, Sink, or Through)
+ * @returns True if the Component is Readable, false otherwise
+ */
 export function isReadable(c: Component): c is ReadableType {
     return c.isReadable;
 }
 
+/**
+ * Indicates whether the specified componant can be written to (consumes data).
+ * Is also a TypeScript type guard for the WritableType.
+ *
+ * @param c - A Component (Source, Sink, or Through)
+ * @returns True if the Component is Writable, false otherwise
+ */
 export function isWritable(c: Component): c is WritableType {
     return c.isWritable;
 }
-
-// TODO
-// isSource, isSink, isThrough, isDataflowComponent
 
 class WalkContext {
     history: Set<Component> = new Set();
@@ -53,6 +64,13 @@ class WalkContext {
 
 export type WalkCallbackFn = (c: Component) => void;
 
+/**
+ * Iterates all the components in the stream -- both upstream and downstream -- calling the specified calback for each.
+ *
+ * @param c - The starting component for iterating the stream. The first callback will be for this component.
+ * @param cb - The callback that will be called for each component.
+ * @param ctx - Used internally for tracking state throughout recursion.
+ */
 export function walkStream(c: Component, cb: WalkCallbackFn, ctx?: WalkContext): void {
     console.log("WALKING:", c.name);
     if (!ctx) {
@@ -86,11 +104,20 @@ export function walkStream(c: Component, cb: WalkCallbackFn, ctx?: WalkContext):
 type DeferredResolveFn<T> = (data: T) => void;
 type DeferredRejectFn = (err: Error) => void;
 
+/**
+ * Contains a Promise that has not yet fulfilled, and the resolve / reject methodes for finalizing it.
+ */
 export class DeferredPromise<T> {
+    /** The pending promise */
     promise: Promise<T>;
+    /** The resolve function for the pending Promise */
     resolve!: DeferredResolveFn<T>;
+    /** The reject function for the pending Promise */
     reject!: DeferredRejectFn;
 
+    /**
+     * Creates the new deferred Promise
+     */
     constructor() {
         this.promise = new Promise<T>((res, rej) => {
             this.resolve = res;

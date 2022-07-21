@@ -11,7 +11,7 @@ export class Through extends Writable(Readable(Component)) {
     /**
      * Creates a new through stream
      *
-     * @param opts options for the new through stream
+     * @param opts - Options for the new through stream
      */
     constructor(opts: ThroughOpts = {}) {
         super(opts);
