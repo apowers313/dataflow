@@ -1,4 +1,4 @@
-export {Chunk, DataChunk, ErrorChunk, MetadataChunk} from "./lib/Chunk";
+export {Chunk, ChunkCollection, DataChunk, ErrorChunk, MetadataChunk} from "./lib/Chunk";
 export {Source, SourceMethods} from "./lib/Source";
 export {Through} from "./lib/Through";
 export {Sink} from "./lib/Sink";
