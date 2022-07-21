@@ -1,8 +1,7 @@
-import {Chunk, Sink, Source} from "../index";
+import {Chunk, ChunkCollection, Sink, Source} from "../index";
 import {TestSource} from "./helpers/helpers";
 import {assert} from "chai";
 import {spy} from "sinon";
-import {ChunkCollection} from "../lib/Chunk";
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 async function pull(): Promise<void> { }
