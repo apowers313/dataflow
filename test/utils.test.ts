@@ -1,7 +1,8 @@
 import {Sink, Source, Through, utils} from "../index";
-const {isReadable, isWritable, walkStream} = utils;
+const {isReadable, isWritable, walkStream, DeferredPromise} = utils;
 import {assert} from "chai";
 import {spy} from "sinon";
+import {resolve} from "node:path";
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 async function pull(): Promise<void> { }
@@ -40,12 +41,13 @@ describe("utils", function() {
             const thru = new Through({name: "through"});
             const sink = new Sink({name: "sink", push});
 
-            src.outputs[0].pipe(thru);
-            thru.outputs[0].pipe(sink);
+            src.channels[0].pipe(thru);
+            thru.channels[0].pipe(sink);
 
             const walkSpy = spy();
             walkStream(src, walkSpy);
 
+            console.log("walkSpy.args", walkSpy.args);
             assert.deepEqual(walkSpy.args, [[src], [thru], [sink]]);
         });
 
@@ -55,8 +57,8 @@ describe("utils", function() {
             const thru = new Through({name: "through"});
             const sink = new Sink({name: "sink", push});
 
-            src.outputs[0].pipe(thru);
-            thru.outputs[0].pipe(sink);
+            src.channels[0].pipe(thru);
+            thru.channels[0].pipe(sink);
 
             const walkSpy = spy();
             walkStream(thru, walkSpy);
@@ -71,14 +73,54 @@ describe("utils", function() {
             const thru = new Through({name: "through"});
             const sink = new Sink({name: "sink", push});
 
-            src.outputs[0].pipe(thru);
-            thru.outputs[0].pipe(sink);
+            src.channels[0].pipe(thru);
+            thru.channels[0].pipe(sink);
 
             const walkSpy = spy();
             walkStream(sink, walkSpy);
 
             console.log("walkSpy.args", walkSpy.args);
             assert.deepEqual(walkSpy.args, [[sink], [thru], [src]]);
+        });
+    });
+
+    describe("DeferredPromise", function() {
+        it("exists", function() {
+            assert.isFunction(DeferredPromise);
+        });
+
+        it("immediately has properties", function() {
+            const dp = new DeferredPromise();
+            assert.instanceOf(dp.promise, Promise);
+            assert.isFunction(dp.resolve);
+            assert.isFunction(dp.reject);
+        });
+
+        it("resolves", async function() {
+            const dp = new DeferredPromise();
+            const resolveSpy = spy();
+            const rejectSpy = spy();
+
+            dp.resolve("foo");
+            await dp.promise.then(resolveSpy).catch(rejectSpy);
+
+            assert.strictEqual(resolveSpy.callCount, 1);
+            assert.strictEqual(rejectSpy.callCount, 0);
+            assert.deepEqual(resolveSpy.args, [["foo"]]);
+        });
+
+        it("rejects", async function() {
+            const dp = new DeferredPromise();
+            const resolveSpy = spy();
+            const rejectSpy = spy();
+
+            dp.reject(new Error("foo"));
+            await dp.promise.then(resolveSpy).catch(rejectSpy);
+
+            assert.strictEqual(resolveSpy.callCount, 0);
+            assert.strictEqual(rejectSpy.callCount, 1);
+            console.log("args", rejectSpy.args);
+            assert.strictEqual(rejectSpy.args[0][0].message, "foo");
         });
     });
 });

@@ -22,13 +22,9 @@ export interface MetadataChunkOptions {
 
 export abstract class Chunk {
     type: ChunkType;
-    opt: ChunkOptions;
 
     constructor(type: ChunkType, opt: ChunkOptions) {
         this.type = type;
-
-        // TODO: kill this
-        this.opt = opt;
     }
 
     isData(): this is DataChunk {
@@ -82,7 +78,7 @@ export class DataChunk extends Chunk {
     /**
      * Creates an identical but different version of this Chunk
      */
-    clone() {
+    clone(): Chunk {
         return Chunk.create({
             type: "data",
             data: structuredClone(this.data),
@@ -120,5 +116,26 @@ export class MetadataChunk extends Chunk {
         super("metadata", opt);
 
         throw new Error("metadata not implemented");
+    }
+}
+
+export type ChunkCollectionForEachCb = (chunk: Chunk, chNum: number) => void;
+export class ChunkCollection {
+    chunks: Map<number, Chunk> = new Map();
+
+    add(chNum: number, chunk: Chunk): void {
+        if (this.chunks.has(chNum)) {
+            throw new Error(`ChunkCollection already has message on channel: ${chNum}`);
+        }
+
+        this.chunks.set(chNum, chunk);
+    }
+
+    get(chNum: number): Chunk | undefined {
+        return this.chunks.get(chNum);
+    }
+
+    forEach(cb: ChunkCollectionForEachCb): void {
+        this.chunks.forEach(cb);
     }
 }

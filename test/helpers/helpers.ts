@@ -1,5 +1,5 @@
 /* eslint-disable jsdoc/require-jsdoc */
-import {Source, SourceMethods} from "../../index";
+import {Chunk, Source, SourceMethods} from "../../index";
 
 export function timeout(ms: number): Promise<void> {
     return new Promise((resolve) => {
@@ -22,14 +22,16 @@ export class TestSource extends Source {
     constructor(opt: TestSourceOpts = {}) {
         super({
             pull: (methods) => {
-                const m: SourceMethods = {
-                    send: methods.send,
-                    sendReady: methods.sendReady,
-                    finished: async() => {
-                        this.controller!.close;
-                    },
-                };
-                return this.testPull.call(this, m);
+                // // TODO: get rid of this
+                // const m: SourceMethods = {
+                //     send: methods.send,
+                //     sendMulti: methods.sendMulti,
+                //     finished: async() => {
+                //         this.controller!.close;
+                //     },
+                // };
+                // return this.testPull.call(this, m);
+                return this.testPull.call(this, methods);
             },
             name: "test-source",
         });
@@ -54,8 +56,9 @@ export class TestSource extends Source {
             return;
         }
 
-        const next = {count: this.count};
+        const next = Chunk.create({type: "data", data: {count: this.count}});
         this.count += this.countBy;
+        console.log("sending", next);
         await methods.send(0, next);
     }
 }

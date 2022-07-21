@@ -4,11 +4,10 @@ import {assert} from "chai";
 describe("Through", function() {
     it("is a class", function() {
         assert.isFunction(Through);
-        const t = new Through({name: "foo", numInputs: 3, numOutputs: 4});
+        const t = new Through({name: "foo", numChannels: 4});
         assert.instanceOf(t, Through);
         assert.strictEqual(t.name, "foo");
-        assert.strictEqual(t.numInputs, 3);
-        assert.strictEqual(t.numOutputs, 4);
+        assert.strictEqual(t.numChannels, 4);
     });
 
     it("is readable", function() {

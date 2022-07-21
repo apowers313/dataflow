@@ -21,11 +21,11 @@ class WalkContext {
     //     return this.history.has(c);
     // }
 
-    done(c: Component) {
+    done(c: Component): void {
         this.history.add(c);
     }
 
-    add(component: Component | Array<Component>) {
+    add(component: Component | Array<Component>): void {
         if (!Array.isArray(component)) {
             component = [component];
         }
@@ -53,17 +53,21 @@ class WalkContext {
 
 export type WalkCallbackFn = (c: Component) => void;
 
-export function walkStream(c: Component, cb: WalkCallbackFn, ctx?: WalkContext) {
+export function walkStream(c: Component, cb: WalkCallbackFn, ctx?: WalkContext): void {
     console.log("WALKING:", c.name);
     if (!ctx) {
         ctx = new WalkContext();
     }
 
     if (isReadable(c)) {
+        console.log("isReadable");
+        console.log("c.dests", c.dests);
         ctx.add(c.dests);
     }
 
     if (isWritable(c)) {
+        console.log("isWritable");
+        console.log("c.srcs", c.srcs);
         ctx.add(c.srcs);
     }
 
@@ -77,4 +81,20 @@ export function walkStream(c: Component, cb: WalkCallbackFn, ctx?: WalkContext) 
     }
 
     walkStream(next, cb, ctx);
+}
+
+type DeferredResolveFn<T> = (data: T) => void;
+type DeferredRejectFn = (err: Error) => void;
+
+export class DeferredPromise<T> {
+    promise: Promise<T>;
+    resolve!: DeferredResolveFn<T>;
+    reject!: DeferredRejectFn;
+
+    constructor() {
+        this.promise = new Promise<T>((res, rej) => {
+            this.resolve = res;
+            this.reject = rej;
+        });
+    }
 }

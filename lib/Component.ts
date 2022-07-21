@@ -30,7 +30,7 @@ export abstract class Component {
     /**
      * Creates a new component
      *
-     * @param opts Options for the new component
+     * @param opts - Options for the new component
      */
     constructor(opts: ComponentOpts = {}) {
         this.name = opts.name ?? this.name;

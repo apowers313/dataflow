@@ -9,6 +9,7 @@ module.exports = {
     ],
     plugins: [
         "@typescript-eslint",
+        "eslint-plugin-tsdoc",
     ],
     extends: [
         "plugin:@typescript-eslint/recommended",
@@ -17,11 +18,14 @@ module.exports = {
         "plugin:old-c-programmer/node",
     ],
     rules: {
+        "tsdoc/syntax": "warn",
         "@typescript-eslint/no-floating-promises": "error",
         "@typescript-eslint/no-inferrable-types": "error",
         "@typescript-eslint/explicit-function-return-type": "error",
         "jsdoc/require-param-type": "off",
         "jsdoc/require-returns-type": "off",
+        // "jsdoc/ignore-private": "on",
+        // "jsdoc/check-properties": "on",
         "sort-imports": ["error", {
             ignoreCase: false,
             ignoreDeclarationSort: false,
