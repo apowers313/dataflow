@@ -1,24 +1,10 @@
+import {MetadataCollection} from "./Metadata";
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type ChunkData = Record<string, any>;
-export type ChunkType = "data" | "error" | "metadata";
-
 export type ChunkOptions = DataChunkOptions | ErrorChunkOptions | MetadataChunkOptions;
-
-export interface DataChunkOptions {
-    type: "data";
-    data: ChunkData;
-}
-
-export interface ErrorChunkOptions {
-    type: "error";
-    data: ChunkData;
-    error: Error;
-}
-
-export interface MetadataChunkOptions {
-    type: "metadata";
-    // metadata: Record<string, any>;
-}
+export type ChunkType = "data" | "error" | "metadata";
+// export type ChunkType = Pick<ChunkOptions, "type">;
 
 /**
  * A quantum of data that will flow through the stream. Usually a DataChunk, but may be an ErrorChunk if
@@ -83,6 +69,11 @@ export abstract class Chunk {
     }
 }
 
+export interface DataChunkOptions {
+    type: "data";
+    data: ChunkData;
+}
+
 /**
  * Represents a blob of any data. Data is always an Object
  */
@@ -117,6 +108,12 @@ export class DataChunk extends Chunk {
     }
 }
 
+export interface ErrorChunkOptions {
+    type: "error";
+    data: ChunkData;
+    error: Error;
+}
+
 /**
  * Represents data that has become an error
  */
@@ -139,19 +136,23 @@ export class ErrorChunk extends Chunk {
     }
 }
 
+export interface MetadataChunkOptions {
+    type: "metadata";
+}
+
 /**
  * Represents metadata about a stream
  */
 export class MetadataChunk extends Chunk {
+    metadata = new MetadataCollection();
+
     /**
-     * Creates a new MetadataChunk
+     * Creates a metadata chunk
      *
-     * @param opt - The metadata chunk options
+     * @param opt - Options for the base Chunk
      */
     constructor(opt: MetadataChunkOptions) {
         super("metadata", opt);
-
-        throw new Error("metadata not implemented");
     }
 }
 
@@ -196,4 +197,12 @@ export class ChunkCollection {
     forEach(cb: ChunkCollectionForEachCb): void {
         this.chunks.forEach(cb);
     }
+
+    // static broadcast(chunk: Chunk, numChannels: number): ChunkCollection {
+    //     const cc = new ChunkCollection();
+    //     for (let i = 0; i < numChannels; i++) {
+    //         cc.add(i, chunk);
+    //     }
+    //     return cc;
+    // }
 }

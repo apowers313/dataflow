@@ -1,7 +1,9 @@
 import {Chunk, ChunkData} from "./Chunk";
 import {Component, ComponentOpts} from "./Component";
 import type {Output, ReadableType} from "./Readable";
+import {DataflowEnd} from "./Metadata";
 import {WritableStream} from "node:stream/web";
+import {promiseState} from "./utils";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Constructor<T = Record<any, any>> = abstract new (... args: any[]) => T;
@@ -14,6 +16,8 @@ export interface WritableOpts extends ComponentOpts {
     abort?: () => void;
     push: PushFn;
 }
+
+export type InputMuxModes = "fifo" | "zipper" | "batch";
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface WriteMethods {}
@@ -28,12 +32,15 @@ export interface WriteMethods {}
 export function Writable<TBase extends Constructor<Component>>(Base: TBase) {
     abstract class Writer extends Base {
         readonly isWritable = true;
-        push: PushFn;
-        writableStream: WritableStream;
-        methods: WriteMethods = {};
-        inputs: Array<Output> = [];
+        readonly inputMuxMode: InputMuxModes = "fifo";
+        readonly methods: WriteMethods = {};
 
-        #controller?: WritableStreamDefaultController;
+        inputs: Array<Output> = [];
+        controller?: WritableStreamDefaultController;
+
+        #push: PushFn;
+        #writableStream: WritableStream<Chunk>;
+        #writer: WritableStreamDefaultWriter<Chunk>;
 
         /**
          * Creates a Writable type
@@ -46,10 +53,10 @@ export function Writable<TBase extends Constructor<Component>>(Base: TBase) {
 
             const cfg: WritableOpts = args[0] ?? {};
 
-            this.push = cfg.push;
-            this.writableStream = new WritableStream({
+            this.#push = cfg.push;
+            this.#writableStream = new WritableStream({
                 start: (controller): void => {
-                    this.#controller = controller;
+                    this.controller = controller;
                     if (typeof cfg.start === "function") {
                         cfg.start(controller);
                     }
@@ -61,12 +68,13 @@ export function Writable<TBase extends Constructor<Component>>(Base: TBase) {
 
                     // console.log(`sink '${this.name}':`, chunk.data);
                     if (chunk.isData()) {
-                        await this.push(chunk.data, this.methods);
+                        await this.#push(chunk.data, this.methods);
                     }
                 },
                 close: cfg.close,
                 abort: cfg.abort,
             });
+            this.#writer = this.#writableStream.getWriter();
         }
 
         /** All the direct sources that will send data to this Writable */
@@ -84,8 +92,105 @@ export function Writable<TBase extends Constructor<Component>>(Base: TBase) {
 
         // eslint-disable-next-line jsdoc/require-jsdoc
         async #run(): Promise<void> {
-            console.log("writable stream running");
-            throw new Error("not implemented");
+            const activeReaders = [... this.inputs];
+            const readerPromises = activeReaders.map((r) => r.read());
+            const mode = this.inputMuxMode;
+            const writer = this.#writer;
+
+            const processStreams = async(): Promise<void> => {
+                const results = await getResults();
+                console.log("read results:", results);
+
+                // forward-loop sending results to maintain order of messages
+                const batch: Array<Chunk> = [];
+                for (let i = 0; i < results.length; i++) {
+                    const chunk = results[i];
+                    if (chunk === null || !chunk.isData()) {
+                        continue;
+                    }
+
+                    if (mode === "batch") {
+                        batch.push(chunk);
+                    } else {
+                        await writer.write(chunk);
+                    }
+
+                    readerPromises[i] = activeReaders[i].read();
+                }
+
+                if (mode === "batch" && batch.length) {
+                    const batchData: Record<number, Chunk> = {};
+                    batch.forEach((chunk, idx) => {
+                        batchData[idx] = chunk;
+                    });
+                    await writer.write(Chunk.create({type: "data", data: batchData}));
+                }
+
+                // backward-loop removing dead streams; forward-removing would make indexes invalid
+                for (let i = results.length - 1; i >= 0; i--) {
+                    const chunk = results[i];
+                    if (chunk !== null && chunk.isMetadata() && chunk.metadata.has(DataflowEnd)) {
+                        console.log("removing reader", i);
+                        removeReader(i);
+                    }
+                }
+
+                console.log("activeReaders.length", activeReaders.length);
+                if (activeReaders.length === 0) {
+                    // no more readers, all done!
+                    await this.#writer.close();
+                    return;
+                }
+
+                // eslint-disable-next-line consistent-return
+                return waitForReaders().then(processStreams);
+            };
+
+            const waitForReaders = async(): Promise<void> => {
+                switch (mode) {
+                case "fifo":
+                    await Promise.race(readerPromises);
+                    return;
+                case "batch":
+                case "zipper":
+                    await Promise.all(readerPromises);
+                    return;
+                default:
+                    throw new TypeError(`unknown DataflowMultiInput mode: ${mode}`);
+                }
+            };
+
+            const getResults = async(): Promise<Array<Chunk|null>> => {
+                const promiseStates = await Promise.all(readerPromises.map((r) => promiseState(r)));
+                const results: Array<Chunk|null> = [];
+
+                for (let i = 0; i < promiseStates.length; i++) {
+                    switch (promiseStates[i]) {
+                    case "pending":
+                        results.push(null);
+                        break;
+                    case "fulfilled":
+                        results.push(await readerPromises[i]);
+                        break;
+                    case "rejected":
+                        results.push(null);
+                        // TODO: do we want to do something different here?
+                        // results.push({done: "error"});
+                        break;
+                    default:
+                        throw new Error("unknown promise state");
+                    }
+                }
+
+                return results;
+            };
+
+            const removeReader = function(n: number): void {
+                readerPromises.splice(n, 1);
+                activeReaders.splice(n, 1);
+            };
+
+            return waitForReaders().then(processStreams);
         }
 
         /**

@@ -1,11 +1,10 @@
 import {Sink, Source, Through, utils} from "../index";
-const {isReadable, isWritable, walkStream, DeferredPromise} = utils;
+const {isReadable, isWritable, walkStream, DeferredPromise, promiseState} = utils;
 import {assert} from "chai";
 import {spy} from "sinon";
-import {resolve} from "node:path";
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
-async function pull(): Promise<void> { }
+async function pull(): Promise<void> {}
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 async function push(): Promise<void> {}
 
@@ -121,6 +120,27 @@ describe("utils", function() {
             assert.strictEqual(rejectSpy.callCount, 1);
             console.log("args", rejectSpy.args);
             assert.strictEqual(rejectSpy.args[0][0].message, "foo");
+        });
+    });
+
+    describe("promiseState", function() {
+        it("resolves", async function() {
+            const p = Promise.resolve();
+            const ret = await promiseState(p);
+            assert.strictEqual(ret, "fulfilled");
+        });
+
+        it("rejects", async function() {
+            const p = Promise.reject();
+            const ret = await promiseState(p);
+            assert.strictEqual(ret, "rejected");
+        });
+
+        it("pending", async function() {
+            // eslint-disable-next-line @typescript-eslint/no-empty-function
+            const p = new Promise(() => {});
+            const ret = await promiseState(p);
+            assert.strictEqual(ret, "pending");
         });
     });
 });

@@ -125,3 +125,17 @@ export class DeferredPromise<T> {
         });
     }
 }
+
+export type PromiseState = "pending" | "fulfilled" | "rejected";
+
+/**
+ * Takes a Promise and indicates the state of it: pending, fulfilled, or rejected
+ *
+ * @param p - Promise to get the state of
+ * @returns The state of the Promise: "pending" if it hasn't settled, "fulfilled" if it was resolved and "rejected" if it errored
+ */
+export function promiseState(p: Promise<unknown>): Promise<PromiseState> {
+    const t = {};
+    return Promise.race([p, t])
+        .then((v) => (v === t) ? "pending" : "fulfilled", () => "rejected");
+}

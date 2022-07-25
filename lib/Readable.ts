@@ -1,5 +1,6 @@
-import {Chunk, ChunkCollection} from "./Chunk";
+import {Chunk, ChunkCollection, MetadataChunk} from "./Chunk";
 import {Component, ComponentOpts} from "./Component";
+import {DataflowEnd} from "./Metadata";
 import {DeferredPromise} from "./utils";
 import {ReadableStream} from "node:stream/web";
 import type {WritableType} from "./Writable";
@@ -29,7 +30,7 @@ export interface ReadMethods {
  * Applies the Reader mixin to a base class
  *
  * @param Base - The base class the mixin will be applied to
- * @returns Reader
+ * @returns A Reader class that extends specified base class
  */
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function Readable<TBase extends Constructor<Component>>(Base: TBase) {
@@ -39,10 +40,7 @@ export function Readable<TBase extends Constructor<Component>>(Base: TBase) {
     abstract class Reader extends Base {
         readonly isReadable = true;
         readonly numChannels: number = 1;
-        channels: Array<OutputChannel>;
-
-        controller!: ReadableStreamDefaultController;
-        methods: ReadMethods = {
+        readonly methods: ReadMethods = {
             send: async(chNum, data) => {
                 const cc = new ChunkCollection();
                 cc.add(chNum, data);
@@ -53,10 +51,14 @@ export function Readable<TBase extends Constructor<Component>>(Base: TBase) {
             },
         };
 
+        done = false;
+        channels: Array<OutputChannel>;
+        controller!: ReadableStreamDefaultController;
+
         #pendingReads: Map<Output, DeferredPromise<Chunk>> = new Map();
         #pull: PullFn;
+        #readableStream: ReadableStream<ChunkCollection>;
         #reader: ReadableStreamDefaultReader<ChunkCollection>;
-        #readableStream: ReadableStream;
 
         /**
          * Creates a new Reader
@@ -120,6 +122,12 @@ export function Readable<TBase extends Constructor<Component>>(Base: TBase) {
          * @returns The data that has been received
          */
         async readFor(dest: Output): Promise<Chunk> {
+            if (this.done) {
+                const md = Chunk.create({type: "metadata"}) as MetadataChunk;
+                md.metadata.add(new DataflowEnd());
+                return md;
+            }
+
             console.log("READ FOR", dest.channel.chNum);
             const existing = this.#pendingReads.get(dest);
             console.log("existing", existing);
@@ -147,7 +155,14 @@ export function Readable<TBase extends Constructor<Component>>(Base: TBase) {
             console.log("doRead");
             const readData = await this.#reader.read();
             if (readData.done) {
-                throw new Error("finished not handled");
+                // wrap things up
+                this.done = true;
+                const md = Chunk.create({type: "metadata"}) as MetadataChunk;
+                md.metadata.add(new DataflowEnd());
+                this.#pendingReads.forEach((deferredPromise) => {
+                    deferredPromise.resolve(md);
+                });
+                return;
             }
 
             const cc = readData.value;
@@ -262,7 +277,13 @@ export class Output {
      * @returns The data that has been read
      */
     async read(): Promise<Chunk> {
-        return await this.source.readFor(this);
+        const data = await this.source.readFor(this);
+        if (data.isData()) {
+            return data.clone();
+        }
+
+        // TODO: should we clone errors too?
+        return data;
     }
 }
 

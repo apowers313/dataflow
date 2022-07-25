@@ -33,4 +33,10 @@ describe("Chunk", function() {
 
         it("duplicates really weird objects");
     });
+
+    describe("is", function() {
+        it("Error");
+        it("Data");
+        it("Metadata");
+    });
 });
