@@ -7,6 +7,8 @@ import {spy} from "sinon";
 async function pull(): Promise<void> {}
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 async function push(): Promise<void> {}
+// eslint-disable-next-line @typescript-eslint/no-empty-function
+async function through(): Promise<void> { }
 
 describe("utils", function() {
     describe("isReadable", function() {
@@ -16,7 +18,7 @@ describe("utils", function() {
 
         it("correctly identifies components", function() {
             assert.isTrue(isReadable(new Source({pull})));
-            assert.isTrue(isReadable(new Through()));
+            assert.isTrue(isReadable(new Through({through})));
             assert.isFalse(isReadable(new Sink({push})));
         });
     });
@@ -28,7 +30,7 @@ describe("utils", function() {
 
         it("correctly identifies components", function() {
             assert.isFalse(isWritable(new Source({pull})));
-            assert.isTrue(isWritable(new Through()));
+            assert.isTrue(isWritable(new Through({through})));
             assert.isTrue(isWritable(new Sink({push})));
         });
     });
@@ -37,7 +39,7 @@ describe("utils", function() {
         it("walks simple stream from source", function() {
             // eslint-disable-next-line @typescript-eslint/no-empty-function
             const src = new Source({name: "source", pull});
-            const thru = new Through({name: "through"});
+            const thru = new Through({name: "through", through});
             const sink = new Sink({name: "sink", push});
 
             src.channels[0].pipe(thru);
@@ -53,7 +55,7 @@ describe("utils", function() {
         it("walks simple stream from middle", function() {
             // eslint-disable-next-line @typescript-eslint/no-empty-function
             const src = new Source({name: "source", pull});
-            const thru = new Through({name: "through"});
+            const thru = new Through({name: "through", through});
             const sink = new Sink({name: "sink", push});
 
             src.channels[0].pipe(thru);
@@ -69,7 +71,7 @@ describe("utils", function() {
         it("walks simple stream from sink", function() {
             // eslint-disable-next-line @typescript-eslint/no-empty-function
             const src = new Source({name: "source", pull});
-            const thru = new Through({name: "through"});
+            const thru = new Through({name: "through", through});
             const sink = new Sink({name: "sink", push});
 
             src.channels[0].pipe(thru);

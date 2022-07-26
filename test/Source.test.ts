@@ -121,8 +121,8 @@ describe("Source", function() {
 
             assert.strictEqual(startSpy.callCount, 1);
             assert.strictEqual(writeSpy.callCount, 11);
-            assert.deepEqual(writeSpy.firstCall.args[0], {count: 0});
-            assert.deepEqual(writeSpy.lastCall.args[0], {count: 10});
+            assert.deepEqual(writeSpy.firstCall.args[0], {type: "data", data: {count: 0}});
+            assert.deepEqual(writeSpy.lastCall.args[0], {type: "data", data: {count: 10}});
             assert.strictEqual(closeSpy.callCount, 1);
             assert.strictEqual(abortSpy.callCount, 0);
         });
