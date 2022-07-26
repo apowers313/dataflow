@@ -1,6 +1,13 @@
 /* eslint-disable jsdoc/require-jsdoc */
 import {Chunk, Source, SourceMethods} from "../../index";
 
+// eslint-disable-next-line @typescript-eslint/no-empty-function
+export async function through(): Promise<void> { }
+// eslint-disable-next-line @typescript-eslint/no-empty-function
+export async function push(): Promise<void> { }
+// eslint-disable-next-line @typescript-eslint/no-empty-function
+export async function pull(): Promise<void> { }
+
 export function timeout(ms: number): Promise<void> {
     return new Promise((resolve) => {
         setTimeout(resolve, ms);
@@ -63,40 +70,70 @@ export class TestSource extends Source {
     }
 }
 
-// class TestRoute extends DataflowSource {
-//     constructor(cfg = {}) {
-//         super({
-//             name: "test-route",
-//             numOutputs: cfg.numOutputs ?? 3,
-//         });
+export interface TestRouteOpts {
+    numChannels?: number;
+    outputChan?: number;
+    outputType?: TestRouteTypes;
+}
 
-//         this.count = 0;
-//         this.outputChan = cfg.outputChan ?? "round-robin";
-//     }
+export type TestRouteTypes = "round-robin" | "single-chan" | "broadcast";
 
-//     async pull(methods) {
-//         if (this.count > 10) {
-//             return methods.finished();
-//         }
+export class TestRoute extends Source {
+    count: number;
+    outputChan: number;
+    outputType: TestRouteTypes;
 
-//         if (this.outputChan === "round-robin") {
-//             return this.roundRobinPull(methods);
-//         }
+    constructor(cfg: TestRouteOpts = {}) {
+        super({
+            name: "test-route",
+            numChannels: cfg.numChannels ?? 3,
+            pull: async(methods: SourceMethods) => {
+                await this.testPull.call(this, methods);
+            },
+        });
 
-//         return this.normalPull(methods);
-//     }
+        this.count = 0;
+        this.outputChan = cfg.outputChan ?? 0;
+        this.outputType = cfg.outputType ?? "single-chan";
+    }
 
-//     async roundRobinPull() {
-//         const chNum = this.count % this.numOutputs;
+    async testPull(this: TestRoute, methods: SourceMethods): Promise<void> {
+        if (this.count > 10) {
+            return methods.finished();
+        }
 
-//         const next = {count: this.count};
-//         this.count++;
-//         await this.output.channels[chNum].send(next);
-//     }
+        if (this.outputType === "round-robin") {
+            return this.roundRobinPull(methods);
+        }
 
-//     async normalPull() {
-//         const next = {count: this.count};
-//         this.count++;
-//         await this.output.channels[this.outputChan].send(next);
-//     }
-// }
+        if (this.outputType === "broadcast") {
+            console.log("BROADCAST PULL");
+            return this.broadcastPull(methods);
+        }
+
+        return this.normalPull(methods);
+    }
+
+    async roundRobinPull(this: TestRoute, methods: SourceMethods): Promise<void> {
+        const chNum = this.count % this.numChannels;
+
+        const next = {count: this.count};
+        this.count++;
+        await methods.send(chNum, Chunk.create({type: "data", data: next}));
+    }
+
+    async normalPull(this: TestRoute, methods: SourceMethods): Promise<void> {
+        const next = {count: this.count};
+        this.count++;
+        await methods.send(this.outputChan, Chunk.create({type: "data", data: next}));
+    }
+
+    async broadcastPull(this: TestRoute, methods: SourceMethods): Promise<void> {
+        for (let i = 0; i < this.numChannels; i++) {
+            const next = {count: `${i}-${this.count}`};
+            console.log("XXX SENDING", i, next);
+            await methods.send(i, Chunk.create({type: "data", data: next}));
+        }
+        this.count++;
+    }
+}

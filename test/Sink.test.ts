@@ -1,10 +1,7 @@
-import {Sink, Source} from "../index";
-import {TestSource} from "./helpers/helpers";
+import {TestSource, push} from "./helpers/helpers";
+import {Sink} from "../index";
 import {assert} from "chai";
 import {spy} from "sinon";
-
-// eslint-disable-next-line @typescript-eslint/no-empty-function
-async function push(): Promise<void> { }
 
 describe("Sink", function() {
     this.slow(250);

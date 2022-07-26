@@ -18,6 +18,7 @@ export abstract class Component {
     readonly isReadable: boolean = false;
     readonly isWritable: boolean = false;
     readonly sym = DataflowSymbol;
+    initialized = false;
     name = "<undefined>";
     log = {
         error: console.error,
@@ -41,5 +42,7 @@ export abstract class Component {
      * initializes the component
      */
     // eslint-disable-next-line @typescript-eslint/no-empty-function
-    async init(): Promise<void> {}
+    async init(): Promise<void> {
+        this.initialized = true;
+    }
 }

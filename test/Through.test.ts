@@ -1,10 +1,7 @@
 import {Chunk, Sink, Through} from "../index";
-import {TestSource} from "./helpers/helpers";
+import {TestSource, through} from "./helpers/helpers";
 import {assert} from "chai";
 import {spy} from "sinon";
-
-// eslint-disable-next-line @typescript-eslint/no-empty-function
-async function through(): Promise<void> {}
 
 describe("Through", function() {
     it("is a class", function() {

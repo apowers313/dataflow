@@ -11,12 +11,6 @@ describe("Chunk", function() {
         assert.strictEqual(data.type, "data");
     });
 
-    it("returns existing chunk if data is a DataflowChunk", function() {
-        const d1 = Chunk.create({type: "data", data: {foo: "bar"}});
-        const d2 = Chunk.create({type: "data", data: d1});
-        assert.strictEqual(d1, d2);
-    });
-
     it("throws on invalid chunk type");
 
     it("creates error chunk on error");
