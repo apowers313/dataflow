@@ -1,6 +1,6 @@
+import {Chunk, ChunkData} from "./Chunk";
 import {Component, ComponentOpts} from "./Component";
 import type {Output, ReadableType} from "./Readable";
-import {Chunk} from "./Chunk";
 import {DataflowEnd} from "./Metadata";
 import {WritableStream} from "node:stream/web";
 import {promiseState} from "./utils";
@@ -14,6 +14,7 @@ export interface WritableOpts extends ComponentOpts {
     writeStart?: (controller: WritableStreamDefaultController) => void;
     writeClose?: () => Promise<void>;
     writeAbort?: (reason?: Error) => Promise<void>;
+    mode?: InputMuxModes;
     push: PushFn;
 }
 
@@ -53,6 +54,7 @@ export function Writable<TBase extends Constructor<Component>>(Base: TBase) {
 
             const cfg: WritableOpts = args[0] ?? {};
 
+            this.inputMuxMode = cfg.mode ?? this.inputMuxMode;
             this.#push = cfg.push;
             this.#writableStream = new WritableStream({
                 start: async(controller): Promise<void> => {
@@ -122,9 +124,11 @@ export function Writable<TBase extends Constructor<Component>>(Base: TBase) {
                 }
 
                 if (mode === "batch" && batch.length) {
-                    const batchData: Record<number, Chunk> = {};
+                    const batchData: Record<number, ChunkData> = {};
                     batch.forEach((chunk, idx) => {
-                        batchData[idx] = chunk;
+                        if (chunk.isData()) {
+                            batchData[idx] = chunk.data;
+                        }
                     });
                     await writer.write(Chunk.create({type: "data", data: batchData}));
                 }
