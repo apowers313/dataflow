@@ -1,8 +1,9 @@
 /* eslint-disable jsdoc/require-jsdoc */
-import {Chunk, Source, SourceMethods} from "../../index";
+import {Chunk, Source, SourceMethods, ThroughMethods} from "../../index";
 
-// eslint-disable-next-line @typescript-eslint/no-empty-function
-export async function through(): Promise<void> { }
+export async function through(chunk: Chunk, methods: ThroughMethods): Promise<void> {
+    await methods.send(0, chunk);
+}
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 export async function push(): Promise<void> { }
 // eslint-disable-next-line @typescript-eslint/no-empty-function

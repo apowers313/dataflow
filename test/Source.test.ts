@@ -144,9 +144,9 @@ describe("Source", function() {
             const thru2 = new Through({through, name: "thru2"});
             const thru3 = new Through({through, name: "thru3"});
             const sinkSpy1 = spy();
-            const sink1 = new Sink({push, name: "sink1"});
+            const sink1 = new Sink({push: sinkSpy1, name: "sink1"});
             const sinkSpy2 = spy();
-            const sink2 = new Sink({push, name: "sink2"});
+            const sink2 = new Sink({push: sinkSpy2, name: "sink2"});
             const sinkSpy3 = spy();
             const sink3 = new Sink({push: sinkSpy3, name: "sink3"});
             const sinkSpy4 = spy();
