@@ -40,5 +40,6 @@ export abstract class Component {
     /**
      * initializes the component
      */
-    abstract init(): Promise<void>
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    async init(): Promise<void> {}
 }

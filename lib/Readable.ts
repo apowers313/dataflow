@@ -11,9 +11,9 @@ type Constructor<T = Record<any, any>> = abstract new (... args: any[]) => T;
 export type PullFn = (methods: ReadMethods) => Promise<void>
 
 export interface ReadableOpts extends ComponentOpts {
-    start?: (controller: WritableStreamDefaultController) => void;
-    close?: () => void;
-    cancel?: () => void;
+    readStart?: (controller: WritableStreamDefaultController) => Promise<void>;
+    readClose?: () => Promise<void>;
+    readCancel?: () => Promise<void>;
     numChannels?: number;
     pull: PullFn;
 }
@@ -40,20 +40,20 @@ export function Readable<TBase extends Constructor<Component>>(Base: TBase) {
     abstract class Reader extends Base {
         readonly isReadable = true;
         readonly numChannels: number = 1;
-        readonly methods: ReadMethods = {
+        readonly readMethods: ReadMethods = {
             send: async(chNum, data) => {
                 const cc = new ChunkCollection();
                 cc.add(chNum, data);
-                this.controller.enqueue(cc);
+                this.readableController.enqueue(cc);
             },
             sendMulti: async(cc: ChunkCollection) => {
-                this.controller.enqueue(cc);
+                this.readableController.enqueue(cc);
             },
         };
 
         done = false;
         channels: Array<OutputChannel>;
-        controller!: ReadableStreamDefaultController;
+        readableController!: ReadableStreamDefaultController;
 
         #pendingReads: Map<Output, DeferredPromise<Chunk>> = new Map();
         #pull: PullFn;
@@ -79,16 +79,16 @@ export function Readable<TBase extends Constructor<Component>>(Base: TBase) {
                 .map((_o: unknown, idx: number) => new OutputChannel({chNum: idx, parent: this}));
 
             this.#readableStream = new ReadableStream({
-                start: (controller): void => {
-                    this.controller = controller;
-                    if (typeof cfg.start === "function") {
-                        cfg.start(controller);
+                start: async(controller): Promise<void> => {
+                    this.readableController = controller;
+                    if (typeof cfg.readStart === "function") {
+                        await cfg.readStart(controller);
                     }
                 },
                 pull: async(): Promise<void> => {
-                    return this.#pull(this.methods);
+                    return this.#pull(this.readMethods);
                 },
-                cancel: cfg.cancel,
+                cancel: cfg.readCancel,
             });
             this.#reader = this.#readableStream.getReader();
         }
@@ -97,7 +97,10 @@ export function Readable<TBase extends Constructor<Component>>(Base: TBase) {
          * Initializes the Readable
          */
         // eslint-disable-next-line @typescript-eslint/no-empty-function
-        async init(): Promise<void> {}
+        async init(): Promise<void> {
+            await super.init();
+            console.log(`Readable init (${this.name})`);
+        }
 
         /** All of the Writable destinations associated with this Readable  */
         get dests(): Array<WritableType> {
@@ -128,18 +131,14 @@ export function Readable<TBase extends Constructor<Component>>(Base: TBase) {
                 return md;
             }
 
-            console.log("READ FOR", dest.channel.chNum);
+            console.log("READ FOR", dest.channel.chNum, "by", this.name);
             const existing = this.#pendingReads.get(dest);
-            console.log("existing", existing);
             if (existing) {
                 return existing.promise;
             }
 
-            console.log("readFor: new promise");
             const dp = new DeferredPromise<Chunk>();
             this.#pendingReads.set(dest, dp);
-            console.log("size:", this.#pendingReads.size);
-            console.log("this.numDests", this.numDests);
 
             if ((this.#pendingReads.size) >= this.numDests) {
                 await this.#doRead();

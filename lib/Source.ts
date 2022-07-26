@@ -1,5 +1,5 @@
+import {Component, ComponentOpts} from "./Component";
 import {ReadMethods, Readable, ReadableOpts} from "./Readable";
-import {Component} from "./Component";
 import {walkStream} from "./utils";
 
 type FinishedFn = () => Promise<void>
@@ -13,12 +13,13 @@ export interface SourceOpts extends Omit<ReadableOpts, "pull"> {
     pull: SourcePullFn;
 }
 
+type SourceSuperOpts = ReadableOpts & ComponentOpts
+
 /**
  * Generates data for a pipeline
  */
 export class Source extends Readable(Component) {
-    declare methods: SourceMethods;
-    declare pull: SourcePullFn;
+    #sourcePull: SourcePullFn;
 
     /**
      * Creates a source
@@ -27,12 +28,21 @@ export class Source extends Readable(Component) {
      */
     // eslint-disable-next-line @typescript-eslint/no-empty-function
     constructor(opts: SourceOpts) {
-        super(opts);
-
-        console.log("this.methods", this.methods);
-        this.methods.finished = async(): Promise<void> => {
-            this.controller!.close();
+        const inputOpts: SourceSuperOpts = {
+            ... opts,
+            pull: async(methods): Promise<void> => {
+                await this.#sourcePull({
+                    ... methods,
+                    finished: async(): Promise<void> => {
+                        this.readableController!.close();
+                    },
+                });
+            },
         };
+        super(inputOpts);
+        this.#sourcePull = opts.pull;
+
+        console.log("this.methods", this.readMethods);
     }
 
     /**

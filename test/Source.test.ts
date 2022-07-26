@@ -110,17 +110,10 @@ describe("Source", function() {
             const abortSpy = spy();
             const sink = new Sink({
                 push: writeSpy,
-                start: startSpy,
-                close: closeSpy,
-                abort: abortSpy,
+                writeStart: startSpy,
+                writeClose: closeSpy,
+                writeAbort: abortSpy,
             });
-
-            // const testSink = new WritableStream({
-            //     start: startSpy,
-            //     write: writeSpy,
-            //     close: closeSpy,
-            //     abort: abortSpy,
-            // });
 
             src.channels[0].pipe(sink);
             // await src.init();
@@ -128,7 +121,6 @@ describe("Source", function() {
 
             assert.strictEqual(startSpy.callCount, 1);
             assert.strictEqual(writeSpy.callCount, 11);
-            console.log("+++ ARGS", writeSpy.args);
             assert.deepEqual(writeSpy.firstCall.args[0], {count: 0});
             assert.deepEqual(writeSpy.lastCall.args[0], {count: 10});
             assert.strictEqual(closeSpy.callCount, 1);

@@ -1,6 +1,6 @@
-import {Chunk, ChunkData} from "./Chunk";
 import {Component, ComponentOpts} from "./Component";
 import type {Output, ReadableType} from "./Readable";
+import {Chunk} from "./Chunk";
 import {DataflowEnd} from "./Metadata";
 import {WritableStream} from "node:stream/web";
 import {promiseState} from "./utils";
@@ -8,12 +8,12 @@ import {promiseState} from "./utils";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Constructor<T = Record<any, any>> = abstract new (... args: any[]) => T;
 
-type PushFn = (data: ChunkData, methods: WriteMethods) => Promise<void>
+type PushFn = (chunk: Chunk, methods: WriteMethods) => Promise<void>
 
 export interface WritableOpts extends ComponentOpts {
-    start?: (controller: WritableStreamDefaultController) => void;
-    close?: () => void;
-    abort?: () => void;
+    writeStart?: (controller: WritableStreamDefaultController) => void;
+    writeClose?: () => Promise<void>;
+    writeAbort?: (reason?: Error) => Promise<void>;
     push: PushFn;
 }
 
@@ -33,10 +33,10 @@ export function Writable<TBase extends Constructor<Component>>(Base: TBase) {
     abstract class Writer extends Base {
         readonly isWritable = true;
         readonly inputMuxMode: InputMuxModes = "fifo";
-        readonly methods: WriteMethods = {};
+        readonly writeMethods: WriteMethods = {};
 
         inputs: Array<Output> = [];
-        controller?: WritableStreamDefaultController;
+        writableController?: WritableStreamDefaultController;
 
         #push: PushFn;
         #writableStream: WritableStream<Chunk>;
@@ -55,10 +55,10 @@ export function Writable<TBase extends Constructor<Component>>(Base: TBase) {
 
             this.#push = cfg.push;
             this.#writableStream = new WritableStream({
-                start: (controller): void => {
-                    this.controller = controller;
-                    if (typeof cfg.start === "function") {
-                        cfg.start(controller);
+                start: async(controller): Promise<void> => {
+                    this.writableController = controller;
+                    if (typeof cfg.writeStart === "function") {
+                        await cfg.writeStart(controller);
                     }
                 },
                 write: async(chunk): Promise<void> => {
@@ -66,13 +66,12 @@ export function Writable<TBase extends Constructor<Component>>(Base: TBase) {
                         throw new TypeError("DataflowSink: expected write data to be instance of DataflowChunk");
                     }
 
-                    // console.log(`sink '${this.name}':`, chunk.data);
                     if (chunk.isData()) {
-                        await this.#push(chunk.data, this.methods);
+                        await this.#push(chunk, this.writeMethods);
                     }
                 },
-                close: cfg.close,
-                abort: cfg.abort,
+                close: cfg.writeClose,
+                abort: cfg.writeAbort,
             });
             this.#writer = this.#writableStream.getWriter();
         }
@@ -86,12 +85,14 @@ export function Writable<TBase extends Constructor<Component>>(Base: TBase) {
          * Initializes the Writable
          */
         async init(): Promise<void> {
-            console.log("Writable init");
+            await super.init();
+            console.log(`Writable init (${this.name})`);
             return this.#run();
         }
 
         // eslint-disable-next-line jsdoc/require-jsdoc
         async #run(): Promise<void> {
+            console.log("#RUNNING", this.name);
             const activeReaders = [... this.inputs];
             const readerPromises = activeReaders.map((r) => r.read());
             const mode = this.inputMuxMode;
@@ -112,6 +113,8 @@ export function Writable<TBase extends Constructor<Component>>(Base: TBase) {
                     if (mode === "batch") {
                         batch.push(chunk);
                     } else {
+                        console.log("writing chunk", chunk);
+                        console.log("writer wants", writer.desiredSize);
                         await writer.write(chunk);
                     }
 
