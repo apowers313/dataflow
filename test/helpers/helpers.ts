@@ -1,5 +1,5 @@
 /* eslint-disable jsdoc/require-jsdoc */
-import {Chunk, Source, SourceMethods, ThroughMethods} from "../../index";
+import {Chunk, MetadataType, Source, SourceMethods, ThroughMethods} from "../../index";
 
 export async function through(chunk: Chunk, methods: ThroughMethods): Promise<void> {
     await methods.send(0, chunk);
@@ -134,7 +134,13 @@ export class TestRoute extends Source {
             const next = {count: `${i}-${this.count}`};
             console.log("XXX SENDING", i, next);
             await methods.send(i, Chunk.create({type: "data", data: next}));
+            // TODO: methods.sendMulti
         }
         this.count++;
     }
+}
+
+export class TestMetadata extends MetadataType {
+    name = "test";
+    value = "testy";
 }

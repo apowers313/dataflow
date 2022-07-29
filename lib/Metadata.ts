@@ -1,3 +1,5 @@
+import {inspectSymbol} from "./utils";
+
 /**
  * An abstract class for representing all types of metadata
  */
@@ -55,6 +57,15 @@ export class MetadataCollection {
      */
     get size(): number {
         return this.#collection.length;
+    }
+
+    toString(): string {
+        const metadataNames = this.#collection.map((mt) => `"${mt.constructor.name}"`);
+        return `MetadataCollection [${metadataNames.join(" ")}]`;
+    }
+
+    [inspectSymbol](): string {
+        return this.toString();
     }
 }
 

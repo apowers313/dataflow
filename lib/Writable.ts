@@ -1,20 +1,22 @@
-import {Chunk, ChunkData} from "./Chunk";
+import {Chunk, ChunkCollection} from "./Chunk";
 import {Component, ComponentOpts} from "./Component";
+import {CountQueuingStrategy, WritableStream} from "node:stream/web";
 import type {Output, ReadableType} from "./Readable";
 import {DataflowEnd} from "./Metadata";
-import {WritableStream} from "node:stream/web";
 import {promiseState} from "./utils";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Constructor<T = Record<any, any>> = abstract new (... args: any[]) => T;
 
-type PushFn = (chunk: Chunk, methods: WriteMethods) => Promise<void>
+type PushFn = (data: Chunk|ChunkCollection, methods: WriteMethods) => Promise<void>
 
 export interface WritableOpts extends ComponentOpts {
     writeStart?: (controller: WritableStreamDefaultController) => void;
     writeClose?: () => Promise<void>;
     writeAbort?: (reason?: Error) => Promise<void>;
     mode?: InputMuxModes;
+    queueSize?: number;
+    writeAll?: boolean;
     push: PushFn;
 }
 
@@ -35,13 +37,15 @@ export function Writable<TBase extends Constructor<Component>>(Base: TBase) {
         readonly isWritable = true;
         readonly inputMuxMode: InputMuxModes = "fifo";
         readonly writeMethods: WriteMethods = {};
+        readonly queueSize: number;
 
+        writeAll: boolean;
         inputs: Array<Output> = [];
         writableController?: WritableStreamDefaultController;
 
         #push: PushFn;
-        #writableStream: WritableStream<Chunk>;
-        #writer: WritableStreamDefaultWriter<Chunk>;
+        #writableStream: WritableStream<Chunk|ChunkCollection>;
+        #writer: WritableStreamDefaultWriter<Chunk|ChunkCollection>;
 
         /**
          * Creates a Writable type
@@ -54,6 +58,8 @@ export function Writable<TBase extends Constructor<Component>>(Base: TBase) {
 
             const cfg: WritableOpts = args[0] ?? {};
 
+            this.queueSize = cfg.queueSize ?? 1;
+            this.writeAll = cfg.writeAll ?? false;
             this.inputMuxMode = cfg.mode ?? this.inputMuxMode;
             this.#push = cfg.push;
             this.#writableStream = new WritableStream({
@@ -64,17 +70,19 @@ export function Writable<TBase extends Constructor<Component>>(Base: TBase) {
                     }
                 },
                 write: async(chunk): Promise<void> => {
-                    if (!(chunk instanceof Chunk)) {
-                        throw new TypeError("DataflowSink: expected write data to be instance of DataflowChunk");
-                    }
-
-                    if (chunk.isData()) {
+                    if (chunk instanceof Chunk) {
+                        if (this.writeAll || chunk.isData()) {
+                            await this.#push(chunk, this.writeMethods);
+                        }
+                    } else if (chunk instanceof ChunkCollection) {
                         await this.#push(chunk, this.writeMethods);
+                    } else {
+                        throw new TypeError("Sink: expected write data to be instance of Chunk or ChunkCollection");
                     }
                 },
                 close: cfg.writeClose,
                 abort: cfg.writeAbort,
-            });
+            }, new CountQueuingStrategy({highWaterMark: this.queueSize}));
             this.#writer = this.#writableStream.getWriter();
         }
 
@@ -108,7 +116,10 @@ export function Writable<TBase extends Constructor<Component>>(Base: TBase) {
                 const batch: Array<Chunk> = [];
                 for (let i = 0; i < results.length; i++) {
                     const chunk = results[i];
-                    if (chunk === null || !chunk.isData()) {
+                    if (chunk === null ||
+                        !(chunk.isData() || this.writeAll)) {
+                        // discard non-data if not doing writeAll
+                        readerPromises[i] = activeReaders[i].read();
                         continue;
                     }
 
@@ -124,13 +135,13 @@ export function Writable<TBase extends Constructor<Component>>(Base: TBase) {
                 }
 
                 if (mode === "batch" && batch.length) {
-                    const batchData: Record<number, ChunkData> = {};
+                    const batchData = new ChunkCollection();
                     batch.forEach((chunk, idx) => {
                         if (chunk.isData()) {
-                            batchData[idx] = chunk.data;
+                            batchData.add(idx, chunk);
                         }
                     });
-                    await writer.write(Chunk.create({type: "data", data: batchData}));
+                    await writer.write(batchData);
                 }
 
                 // backward-loop removing dead streams; forward-removing would make indexes invalid

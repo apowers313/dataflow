@@ -165,11 +165,22 @@ export type ChunkCollectionForEachCb = (chunk: Chunk, chNum: number) => void;
 export class ChunkCollection {
     chunks: Map<number, Chunk> = new Map();
 
+    get [Symbol.toStringTag](): string {
+        return "Validator";
+    }
+
+    /**
+     * Returns the number of chunks in the collection
+     */
+    get size(): number {
+        return this.chunks.size;
+    }
+
     /**
      * Adds data to the collection
      *
      * @param chNum - The channel number to add data to. Throws an Error if data has already been added to that channel.
-     * @param chunk -  The data to add.
+     * @param chunk - The data to add.
      */
     add(chNum: number, chunk: Chunk): void {
         if (this.chunks.has(chNum)) {
@@ -190,6 +201,15 @@ export class ChunkCollection {
     }
 
     /**
+     * Removes a chunk from the collection
+     *
+     * @param chNum - The channel number to delete
+     */
+    delete(chNum: number): void {
+        this.chunks.delete(chNum);
+    }
+
+    /**
      * Iterates the data Chunks that have been set in this collection
      *
      * @param cb - Called for each Chunk
@@ -198,11 +218,11 @@ export class ChunkCollection {
         this.chunks.forEach(cb);
     }
 
-    // static broadcast(chunk: Chunk, numChannels: number): ChunkCollection {
-    //     const cc = new ChunkCollection();
-    //     for (let i = 0; i < numChannels; i++) {
-    //         cc.add(i, chunk);
-    //     }
-    //     return cc;
-    // }
+    static broadcast(chunk: Chunk, numChannels: number): ChunkCollection {
+        const cc = new ChunkCollection();
+        for (let i = 0; i < numChannels; i++) {
+            cc.add(i, chunk);
+        }
+        return cc;
+    }
 }

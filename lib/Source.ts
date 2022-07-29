@@ -1,5 +1,7 @@
 import {Component, ComponentOpts} from "./Component";
 import {ReadMethods, Readable, ReadableOpts} from "./Readable";
+import {Chunk, ChunkCollection, MetadataChunk} from "./Chunk";
+import {DataflowStart} from "./Metadata";
 import {walkStream} from "./utils";
 
 type FinishedFn = () => Promise<void>
@@ -10,6 +12,7 @@ export interface SourceMethods extends ReadMethods {
 }
 
 export interface SourceOpts extends Omit<ReadableOpts, "pull"> {
+    sendStartMetadata?: boolean;
     pull: SourcePullFn;
 }
 
@@ -20,6 +23,7 @@ type SourceSuperOpts = ReadableOpts & ComponentOpts
  */
 export class Source extends Readable(Component) {
     #sourcePull: SourcePullFn;
+    sendStartMetadata: boolean;
 
     /**
      * Creates a source
@@ -38,9 +42,38 @@ export class Source extends Readable(Component) {
                     },
                 });
             },
+            readStart: async(controller): Promise<void> => {
+                // console.log("readStart");
+                // if (this.sendStartMetadata) {
+                //     const mds = Chunk.create({type: "metadata"}) as MetadataChunk;
+                //     mds.metadata.add(new DataflowStart());
+                //     const cc = ChunkCollection.broadcast(mds, this.numChannels);
+                //     await this.sendMulti(cc);
+                // }
+
+                if (opts.readStart) {
+                    await opts.readStart(controller);
+                }
+            },
         };
+        // inputOpts.readStart = async(controller): Promise<void> => {
+        //     console.log("this", this);
+        //     if (this.sendStartMetadata) {
+        //         const mds = Chunk.create({type: "metadata"}) as MetadataChunk;
+        //         mds.metadata.add(new DataflowStart());
+        //         const cc = ChunkCollection.broadcast(mds, this.numChannels);
+        //         await this.sendMulti(cc);
+        //     }
+
+        //     if (opts.readStart) {
+        //         await opts.readStart(controller);
+        //     }
+        // };
+        console.log(">>> SUPER");
         super(inputOpts);
+        console.log("<<< SUPER");
         this.#sourcePull = opts.pull;
+        this.sendStartMetadata = opts.sendStartMetadata ?? true;
 
         console.log("this.methods", this.readMethods);
     }
@@ -56,5 +89,16 @@ export class Source extends Readable(Component) {
         });
 
         await Promise.all(initPromises);
+    }
+
+    async init(): Promise<void> {
+        if (this.sendStartMetadata) {
+            const mds = Chunk.create({type: "metadata"}) as MetadataChunk;
+            mds.metadata.add(new DataflowStart());
+            const cc = ChunkCollection.broadcast(mds, this.numChannels);
+            this.readableController.enqueue(cc);
+        }
+
+        await super.init();
     }
 }

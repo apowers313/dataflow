@@ -1,4 +1,4 @@
-import {Chunk, DataChunk} from "../index";
+import {Chunk, ChunkCollection, DataChunk} from "../index";
 import {assert} from "chai";
 
 describe("Chunk", function() {
@@ -32,5 +32,15 @@ describe("Chunk", function() {
         it("Error");
         it("Data");
         it("Metadata");
+    });
+
+    describe("ChunkCollection", function() {
+        it("is function", function() {
+            assert.isFunction(ChunkCollection);
+        });
+
+        it("add");
+        it("get");
+        it("forEach");
     });
 });

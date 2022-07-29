@@ -1,8 +1,8 @@
 import {Chunk, ChunkCollection, MetadataChunk} from "./Chunk";
 import {Component, ComponentOpts} from "./Component";
-import {DataflowEnd} from "./Metadata";
+import {CountQueuingStrategy, ReadableStream} from "node:stream/web";
+import {DataflowEnd, DataflowStart} from "./Metadata";
 import {DeferredPromise} from "./utils";
-import {ReadableStream} from "node:stream/web";
 import type {WritableType} from "./Writable";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -15,15 +15,18 @@ export interface ReadableOpts extends ComponentOpts {
     readClose?: () => Promise<void>;
     readCancel?: () => Promise<void>;
     numChannels?: number;
+    queueSize?: number;
     pull: PullFn;
 }
 
 type SendFn = (chNum: number, data: Chunk) => Promise<void>
 type SendMultiFn = (cc: ChunkCollection) => Promise<void>
+type DesiredSizeFn = () => number | null;
 
 export interface ReadMethods {
     send: SendFn;
     sendMulti: SendMultiFn;
+    desiredSize: DesiredSizeFn;
 }
 
 /**
@@ -40,25 +43,29 @@ export function Readable<TBase extends Constructor<Component>>(Base: TBase) {
     abstract class Reader extends Base {
         readonly isReadable = true;
         readonly numChannels: number = 1;
+        readonly queueSize: number;
         readonly readMethods: ReadMethods = {
             send: async(chNum, data) => {
                 const cc = new ChunkCollection();
                 cc.add(chNum, data);
-                this.readableController.enqueue(cc);
+                return this.sendMulti(cc);
             },
             sendMulti: async(cc: ChunkCollection) => {
-                this.readableController.enqueue(cc);
+                return this.sendMulti(cc);
+            },
+            desiredSize: () => {
+                return this.readableController.desiredSize;
             },
         };
 
         done = false;
         channels: Array<OutputChannel>;
-        readableController!: ReadableStreamDefaultController;
+        readableController!: ReadableStreamDefaultController<ChunkCollection>;
 
         #pendingReads: Map<Output, DeferredPromise<Chunk>> = new Map();
         #pull: PullFn;
         #readableStream: ReadableStream<ChunkCollection>;
-        #reader: ReadableStreamDefaultReader<ChunkCollection>;
+        #reader!: ReadableStreamDefaultReader<ChunkCollection>;
 
         /**
          * Creates a new Reader
@@ -73,6 +80,7 @@ export function Readable<TBase extends Constructor<Component>>(Base: TBase) {
 
             this.#pull = cfg.pull;
 
+            this.queueSize = cfg.queueSize ?? 1;
             this.numChannels = cfg.numChannels ?? this.numChannels;
             this.channels = new Array(this.numChannels)
                 .fill(null)
@@ -80,25 +88,34 @@ export function Readable<TBase extends Constructor<Component>>(Base: TBase) {
 
             this.#readableStream = new ReadableStream({
                 start: async(controller): Promise<void> => {
+                    console.log("xxx start");
                     this.readableController = controller;
+
+                    // // send start metadata
+                    // const mds = Chunk.create({type: "metadata"}) as MetadataChunk;
+                    // mds.metadata.add(new DataflowStart());
+                    // const cc = ChunkCollection.broadcast(mds, this.numChannels);
+                    // await this.sendMulti(cc);
+
                     if (typeof cfg.readStart === "function") {
                         await cfg.readStart(controller);
                     }
                 },
                 pull: async(): Promise<void> => {
+                    console.log("xxx pull");
+                    console.log("desiredSize", this.readableController.desiredSize);
                     return this.#pull(this.readMethods);
                 },
                 cancel: cfg.readCancel,
-            });
-            this.#reader = this.#readableStream.getReader();
+            }, new CountQueuingStrategy({highWaterMark: this.queueSize}));
         }
 
         /**
          * Initializes the Readable
          */
-        // eslint-disable-next-line @typescript-eslint/no-empty-function
         async init(): Promise<void> {
             await super.init();
+            this.#reader = this.#readableStream.getReader();
             console.log(`Readable init (${this.name})`);
         }
 
@@ -114,6 +131,7 @@ export function Readable<TBase extends Constructor<Component>>(Base: TBase) {
 
         /** Number of destinations that have been connected to this Readable via pipe() */
         get numDests(): number {
+            console.log("numDests", this.dests.length);
             return this.dests.length;
         }
 
@@ -140,6 +158,8 @@ export function Readable<TBase extends Constructor<Component>>(Base: TBase) {
             const dp = new DeferredPromise<Chunk>();
             this.#pendingReads.set(dest, dp);
 
+            console.log("this.#pendingReads.size", this.#pendingReads.size);
+            console.log("this.numDests", this.numDests);
             if ((this.#pendingReads.size) >= this.numDests) {
                 await this.#doRead();
             }
@@ -170,6 +190,7 @@ export function Readable<TBase extends Constructor<Component>>(Base: TBase) {
             }
 
             console.log("cc", cc);
+            console.log("cc.size", cc.size);
             cc.forEach((data, chNum) => {
                 [... this.#pendingReads]
                     // find the matching reads for the channel
@@ -182,6 +203,36 @@ export function Readable<TBase extends Constructor<Component>>(Base: TBase) {
                         dp.resolve(data);
                     });
             });
+        }
+
+        /**
+         * Sends a ChunkCollection. Used internally by all send methods
+         *
+         * @param cc - The ChunkCollection to send
+         */
+        async sendMulti(cc: ChunkCollection): Promise<void> {
+            cc.forEach((chunk, chNum) => {
+                console.log("this.channels[chNum].numDests", chNum, this.channels[chNum].numDests);
+                if (this.channels[chNum].numDests === 0) {
+                    // throw an error if trying to send data on a channel with no destinations
+                    if (chunk.isData()) {
+                        throw new Error(`Trying to send data on channel without any destations (channel ${chNum}). Data will be lost.`);
+                    }
+
+                    console.log("??? dropping", chNum);
+                    // if sending metadata or an error, just silently drop the chunk
+                    cc.delete(chNum);
+                }
+            });
+
+            console.log("cc.size", cc.size);
+            if (cc.size < 1) {
+                console.log("nothing to send, returning");
+                return;
+            }
+
+            console.log("QUEUE", cc.get(0));
+            this.readableController.enqueue(cc);
         }
     }
     return Reader;
@@ -241,7 +292,11 @@ export class OutputChannel {
         return ret;
     }
 
-    // async init(): Promise<void> {}
+    /** number of destinations connected to this channel */
+    get numDests(): number {
+        console.log(`channel[${this.chNum}].numDests:`, this.dests.length);
+        return this.dests.length;
+    }
 }
 
 export interface OutputOpts {

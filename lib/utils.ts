@@ -139,3 +139,5 @@ export function promiseState(p: Promise<unknown>): Promise<PromiseState> {
     return Promise.race([p, t])
         .then((v) => (v === t) ? "pending" : "fulfilled", () => "rejected");
 }
+
+export const inspectSymbol = Symbol.for("nodejs.util.inspect.custom");

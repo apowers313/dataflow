@@ -1,11 +1,11 @@
-import {Chunk, ChunkCollection, Sink, Source, Through} from "../index";
-import {TestRoute, TestSource, pull, push, through} from "./helpers/helpers";
+import {Chunk, ChunkCollection, DataflowEnd, DataflowStart, MetadataChunk, Sink, Source, Through} from "../index";
+import {TestMetadata, TestRoute, TestSource, pull, push, through} from "./helpers/helpers";
 import {assert} from "chai";
 import {spy} from "sinon";
 
 describe("Source", function() {
-    this.slow(250);
-    this.retries(4);
+    // this.slow(250);
+    // this.retries(4);
 
     it("is a class", function() {
         assert.isFunction(Source);
@@ -32,6 +32,7 @@ describe("Source", function() {
                     const data = Chunk.create({type: "data", data: {foo: "bar"}});
                     await methods.send(0, data);
                 },
+                sendStartMetadata: false,
             });
             src.channels[0].pipe(new Sink({push: spy()}));
             assert.strictEqual(src.channels[0].outputs.length, 1);
@@ -51,6 +52,7 @@ describe("Source", function() {
                     const data = Chunk.create({type: "data", data: {foo: "bar"}});
                     await methods.send(0, data);
                 },
+                sendStartMetadata: false,
             });
             src.channels[0].pipe([new Sink({push: spy()}), new Sink({push: spy()})]);
             assert.strictEqual(src.channels[0].outputs.length, 2);
@@ -79,6 +81,7 @@ describe("Source", function() {
                     await methods.sendMulti(cc);
                 },
                 numChannels: 3,
+                sendStartMetadata: false,
             });
             src.channels[0].pipe(new Sink({push: spy()}));
             src.channels[1].pipe(new Sink({push: spy()}));
@@ -163,11 +166,11 @@ describe("Source", function() {
             assert.strictEqual(sinkSpy3.callCount, 11);
             assert.strictEqual(sinkSpy4.callCount, 11);
         });
+
+        it("errors if no channels piped");
     });
 
     describe("route", function() {
-        it("throws if data is not DataflowChannelizedChunks");
-
         it("to two sinks", async function() {
             const testSource = new TestRoute({numChannels: 2, outputType: "broadcast"});
             const writeSpy1 = spy();
@@ -242,11 +245,139 @@ describe("Source", function() {
             assert.deepEqual(writeSpy3.lastCall.args[0], {type: "data", data: {count: "1-10"}});
         });
 
-        it("errors if no channels piped");
+        it("to two sinks, one isn't connected", function(done) {
+            const testSource = new TestRoute({numChannels: 2, outputType: "broadcast"});
+            const writeSpy1 = spy();
+            const sink1 = new Sink({push: writeSpy1});
+
+            testSource.channels[0].pipe(sink1);
+
+            testSource
+                .complete()
+                .then(() => done(new Error("test should not have completed successfully")))
+                .catch((err) => {
+                    console.log("err", err);
+                    if (err.message === "Trying to send data on channel without any destations (channel 1). Data will be lost.") {
+                        return done();
+                    }
+
+                    return done(err);
+                });
+        });
+
         it("errors if sending to a non-piped channel");
         it("can send if a channel is un-piped");
         it("can send to mirrored output");
         it("errors if sendChunksToOutput is too large for number of channels");
         it("errors if sendChunksToOutput is too small for number of channels");
+    });
+
+    it("silently drops error to disconnected channel", async function() {
+        let firstPull = true;
+        const src = new Source({
+            pull: async(methods): Promise<void> => {
+                if (!firstPull) {
+                    return methods.finished();
+                }
+
+                const chunk = Chunk.create({type: "error", error: new Error("foo"), data: {}});
+                const cc = ChunkCollection.broadcast(chunk, this.numChannels);
+                cc.add(0, chunk);
+                await methods.sendMulti(cc);
+                firstPull = false;
+            },
+            numChannels: 2,
+        });
+        const pushSpy = spy();
+        const sink = new Sink({push: pushSpy, writeAll: true});
+        src.channels[0].pipe(sink);
+        await src.complete();
+
+        console.log("pushSpy.args", pushSpy.args);
+        assert.strictEqual(pushSpy.callCount, 3);
+        const chunk0 = pushSpy.args[0][0];
+        assert.isTrue(chunk0.isMetadata());
+        assert.isTrue(chunk0.metadata.has(DataflowStart));
+
+        const chunk1 = pushSpy.args[1][0];
+        assert.isTrue(chunk1.isError());
+        assert.strictEqual(chunk1.error.message, "foo");
+
+        const chunk2 = pushSpy.args[2][0];
+        assert.isTrue(chunk2.isMetadata());
+        assert.isTrue(chunk2.metadata.has(DataflowEnd));
+    });
+
+    it("silently drops metadata to disconnected channel", async function() {
+        let firstPull = true;
+        const src = new Source({
+            pull: async(methods): Promise<void> => {
+                console.log("--- PULL");
+                if (!firstPull) {
+                    console.log("FINISHED");
+                    return methods.finished();
+                }
+
+                const chunk = Chunk.create({type: "metadata"}) as MetadataChunk;
+                chunk.metadata.add(new TestMetadata());
+                console.log("*** Chunk", chunk);
+                const cc = ChunkCollection.broadcast(chunk, this.numChannels);
+                console.log("CC::", cc);
+                cc.add(0, chunk);
+                console.log(">>> PULL SEND");
+                await methods.sendMulti(cc);
+                console.log("<<< PULL SEND");
+                firstPull = false;
+            },
+            numChannels: 2,
+        });
+        const pushSpy = spy();
+        const sink = new Sink({push: pushSpy, writeAll: true});
+        src.channels[0].pipe(sink);
+        console.log("src.dests", src.dests);
+        await src.complete();
+
+        console.log("pushSpy.args", pushSpy.args);
+        assert.strictEqual(pushSpy.callCount, 3);
+        const chunk0 = pushSpy.args[0][0];
+        assert.isTrue(chunk0.isMetadata());
+        assert.isTrue(chunk0.metadata.has(DataflowStart));
+
+        const chunk1 = pushSpy.args[1][0];
+        assert.isTrue(chunk1.isMetadata());
+        assert.isTrue(chunk1.metadata.has(TestMetadata));
+
+        const chunk2 = pushSpy.args[2][0];
+        assert.isTrue(chunk2.isMetadata());
+        assert.isTrue(chunk2.metadata.has(DataflowEnd));
+    });
+
+    describe("queueSize", function() {
+        it("defaults to 1", async function() {
+            let desiredSize = 0;
+            const src = new Source({
+                pull: async(methods): Promise<void> => {
+                    desiredSize = methods.desiredSize() ?? 0;
+                },
+                sendStartMetadata: false,
+            });
+            await src.complete();
+            assert.strictEqual(desiredSize, 1);
+            assert.strictEqual(src.queueSize, 1);
+        });
+
+        it("limits queue", async function() {
+            let desiredSize = 0;
+            const src = new Source({
+                pull: async(methods): Promise<void> => {
+                    desiredSize = methods.desiredSize() ?? 0;
+                },
+                queueSize: 5,
+                sendStartMetadata: false,
+            });
+            await src.complete();
+            assert.strictEqual(desiredSize, 5);
+            assert.strictEqual(src.queueSize, 5);
+        });
     });
 });
