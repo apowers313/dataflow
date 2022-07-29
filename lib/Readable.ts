@@ -65,7 +65,7 @@ export function Readable<TBase extends Constructor<Component>>(Base: TBase) {
         #pendingReads: Map<Output, DeferredPromise<Chunk>> = new Map();
         #pull: PullFn;
         #readableStream: ReadableStream<ChunkCollection>;
-        #reader!: ReadableStreamDefaultReader<ChunkCollection>;
+        #reader: ReadableStreamDefaultReader<ChunkCollection>;
 
         /**
          * Creates a new Reader
@@ -108,6 +108,7 @@ export function Readable<TBase extends Constructor<Component>>(Base: TBase) {
                 },
                 cancel: cfg.readCancel,
             }, new CountQueuingStrategy({highWaterMark: this.queueSize}));
+            this.#reader = this.#readableStream.getReader();
         }
 
         /**
@@ -115,7 +116,6 @@ export function Readable<TBase extends Constructor<Component>>(Base: TBase) {
          */
         async init(): Promise<void> {
             await super.init();
-            this.#reader = this.#readableStream.getReader();
             console.log(`Readable init (${this.name})`);
         }
 
