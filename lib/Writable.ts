@@ -96,13 +96,11 @@ export function Writable<TBase extends Constructor<Component>>(Base: TBase) {
          */
         async init(): Promise<void> {
             await super.init();
-            console.log(`Writable init (${this.name})`);
             return this.#run();
         }
 
         // eslint-disable-next-line jsdoc/require-jsdoc
         async #run(): Promise<void> {
-            console.log("#RUNNING", this.name);
             const activeReaders = [... this.inputs];
             const readerPromises = activeReaders.map((r) => r.read());
             const mode = this.inputMuxMode;
@@ -110,7 +108,6 @@ export function Writable<TBase extends Constructor<Component>>(Base: TBase) {
 
             const processStreams = async(): Promise<void> => {
                 const results = await getResults();
-                console.log("read results:", results);
 
                 // forward-loop sending results to maintain order of messages
                 const batch: Array<Chunk> = [];
@@ -126,8 +123,6 @@ export function Writable<TBase extends Constructor<Component>>(Base: TBase) {
                     if (mode === "batch") {
                         batch.push(chunk);
                     } else {
-                        console.log("writing chunk", chunk);
-                        console.log("writer wants", writer.desiredSize);
                         await writer.write(chunk);
                     }
 
@@ -148,12 +143,10 @@ export function Writable<TBase extends Constructor<Component>>(Base: TBase) {
                 for (let i = results.length - 1; i >= 0; i--) {
                     const chunk = results[i];
                     if (chunk !== null && chunk.isMetadata() && chunk.metadata.has(DataflowEnd)) {
-                        console.log("removing reader", i);
                         removeReader(i);
                     }
                 }
 
-                console.log("activeReaders.length", activeReaders.length);
                 if (activeReaders.length === 0) {
                     // no more readers, all done!
                     await this.#writer.close();

@@ -30,15 +30,6 @@ export class TestSource extends Source {
     constructor(opt: TestSourceOpts = {}) {
         super({
             pull: (methods) => {
-                // // TODO: get rid of this
-                // const m: SourceMethods = {
-                //     send: methods.send,
-                //     sendMulti: methods.sendMulti,
-                //     finished: async() => {
-                //         this.controller!.close;
-                //     },
-                // };
-                // return this.testPull.call(this, m);
                 return this.testPull.call(this, methods);
             },
             name: "test-source",
@@ -66,7 +57,6 @@ export class TestSource extends Source {
 
         const next = Chunk.create({type: "data", data: {count: this.count}});
         this.count += this.countBy;
-        console.log("sending", next);
         await methods.send(0, next);
     }
 }
@@ -108,7 +98,6 @@ export class TestRoute extends Source {
         }
 
         if (this.outputType === "broadcast") {
-            console.log("BROADCAST PULL");
             return this.broadcastPull(methods);
         }
 
@@ -132,7 +121,6 @@ export class TestRoute extends Source {
     async broadcastPull(this: TestRoute, methods: SourceMethods): Promise<void> {
         for (let i = 0; i < this.numChannels; i++) {
             const next = {count: `${i}-${this.count}`};
-            console.log("XXX SENDING", i, next);
             await methods.send(i, Chunk.create({type: "data", data: next}));
             // TODO: methods.sendMulti
         }

@@ -32,7 +32,6 @@ describe("Through", function() {
                         throw new Error("expected data");
                     }
 
-                    console.log("!!! THROUGH", chunk.data.count);
                     (chunk.data.count as number) *= 2;
                     await method.send(0, Chunk.create({type: "data", data: chunk.data}));
                 },
@@ -53,10 +52,8 @@ describe("Through", function() {
             thru.channels[0].pipe(sink);
             await src.complete();
 
-            console.log("+++ ARGS", JSON.stringify(writeSpy.args));
             assert.strictEqual(startSpy.callCount, 1);
             assert.strictEqual(writeSpy.callCount, 11);
-            console.log("writeSpy.firstCall.args[0]", writeSpy.firstCall.args[0]);
             assert.deepEqual(writeSpy.firstCall.args[0], {type: "data", data: {count: 0}});
             assert.deepEqual(writeSpy.lastCall.args[0], {type: "data", data: {count: 20}});
             assert.strictEqual(closeSpy.callCount, 1);

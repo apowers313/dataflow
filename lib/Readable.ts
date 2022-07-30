@@ -1,7 +1,7 @@
 import {Chunk, ChunkCollection, MetadataChunk} from "./Chunk";
 import {Component, ComponentOpts} from "./Component";
 import {CountQueuingStrategy, ReadableStream} from "node:stream/web";
-import {DataflowEnd, DataflowStart} from "./Metadata";
+import {DataflowEnd} from "./Metadata";
 import {DeferredPromise} from "./utils";
 import type {WritableType} from "./Writable";
 
@@ -91,14 +91,7 @@ export function Readable<TBase extends Constructor<Component>>(Base: TBase) {
 
             this.#readableStream = new ReadableStream({
                 start: async(controller): Promise<void> => {
-                    console.log("xxx start");
                     this.readableController = controller;
-
-                    // // send start metadata
-                    // const mds = Chunk.create({type: "metadata"}) as MetadataChunk;
-                    // mds.metadata.add(new DataflowStart());
-                    // const cc = ChunkCollection.broadcast(mds, this.numChannels);
-                    // await this.sendMulti(cc);
 
                     if (typeof cfg.readStart === "function") {
                         await cfg.readStart(controller);
@@ -135,7 +128,6 @@ export function Readable<TBase extends Constructor<Component>>(Base: TBase) {
          */
         async init(): Promise<void> {
             await super.init();
-            console.log(`Readable init (${this.name})`);
         }
 
         /** All of the Writable destinations associated with this Readable  */
@@ -150,7 +142,6 @@ export function Readable<TBase extends Constructor<Component>>(Base: TBase) {
 
         /** Number of destinations that have been connected to this Readable via pipe() */
         get numDests(): number {
-            console.log("numDests", this.dests.length);
             return this.dests.length;
         }
 
@@ -168,7 +159,6 @@ export function Readable<TBase extends Constructor<Component>>(Base: TBase) {
                 return md;
             }
 
-            console.log("READ FOR", dest.channel.chNum, "by", this.name);
             const existing = this.#pendingReads.get(dest);
             if (existing) {
                 return existing.promise;
@@ -177,8 +167,6 @@ export function Readable<TBase extends Constructor<Component>>(Base: TBase) {
             const dp = new DeferredPromise<Chunk>();
             this.#pendingReads.set(dest, dp);
 
-            console.log("this.#pendingReads.size", this.#pendingReads.size);
-            console.log("this.numDests", this.numDests);
             if ((this.#pendingReads.size) >= this.numDests) {
                 await this.#doRead();
             }
@@ -190,7 +178,6 @@ export function Readable<TBase extends Constructor<Component>>(Base: TBase) {
          * Internal helper function for reading data and sending it to all the correct Outputs
          */
         async #doRead(): Promise<void> {
-            console.log("doRead");
             const readData = await this.#reader.read();
             if (readData.done) {
                 // wrap things up
@@ -208,8 +195,6 @@ export function Readable<TBase extends Constructor<Component>>(Base: TBase) {
                 throw new Error("data read returned undefined");
             }
 
-            console.log("cc", cc);
-            console.log("cc.size", cc.size);
             cc.forEach((data, chNum) => {
                 [... this.#pendingReads]
                     // find the matching reads for the channel
@@ -217,7 +202,6 @@ export function Readable<TBase extends Constructor<Component>>(Base: TBase) {
                     // send data for each of the pending readers and remove the reader from the pending list
                     .forEach((tuple) => {
                         const [output, dp] = tuple;
-                        console.log("sending on:", chNum);
                         this.#pendingReads.delete(output);
                         dp.resolve(data);
                     });
@@ -231,26 +215,21 @@ export function Readable<TBase extends Constructor<Component>>(Base: TBase) {
          */
         async sendMulti(cc: ChunkCollection): Promise<void> {
             cc.forEach((chunk, chNum) => {
-                console.log("this.channels[chNum].numDests", chNum, this.channels[chNum].numDests);
                 if (this.channels[chNum].numDests === 0) {
                     // throw an error if trying to send data on a channel with no destinations
                     if (chunk.isData()) {
                         throw new Error(`Trying to send data on channel without any destations (channel ${chNum}). Data will be lost.`);
                     }
 
-                    console.log("??? dropping", chNum);
                     // if sending metadata or an error, just silently drop the chunk
                     cc.delete(chNum);
                 }
             });
 
-            console.log("cc.size", cc.size);
             if (cc.size < 1) {
-                console.log("nothing to send, returning");
                 return;
             }
 
-            console.log("QUEUE", cc.get(0));
             this.readableController.enqueue(cc);
         }
     }
@@ -313,7 +292,6 @@ export class OutputChannel {
 
     /** number of destinations connected to this channel */
     get numDests(): number {
-        console.log(`channel[${this.chNum}].numDests:`, this.dests.length);
         return this.dests.length;
     }
 }

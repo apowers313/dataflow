@@ -1,14 +1,8 @@
 import {Sink, Source, Through, utils} from "../index";
 const {isReadable, isWritable, walkStream, DeferredPromise, promiseState} = utils;
+import {pull, push, through} from "./helpers/helpers";
 import {assert} from "chai";
 import {spy} from "sinon";
-
-// eslint-disable-next-line @typescript-eslint/no-empty-function
-async function pull(): Promise<void> {}
-// eslint-disable-next-line @typescript-eslint/no-empty-function
-async function push(): Promise<void> {}
-// eslint-disable-next-line @typescript-eslint/no-empty-function
-async function through(): Promise<void> { }
 
 describe("utils", function() {
     describe("isReadable", function() {
@@ -48,7 +42,6 @@ describe("utils", function() {
             const walkSpy = spy();
             walkStream(src, walkSpy);
 
-            console.log("walkSpy.args", walkSpy.args);
             assert.deepEqual(walkSpy.args, [[src], [thru], [sink]]);
         });
 
@@ -64,12 +57,10 @@ describe("utils", function() {
             const walkSpy = spy();
             walkStream(thru, walkSpy);
 
-            // console.log("walkSpy.args", walkSpy.args);
             assert.deepEqual(walkSpy.args, [[thru], [sink], [src]]);
         });
 
         it("walks simple stream from sink", function() {
-            // eslint-disable-next-line @typescript-eslint/no-empty-function
             const src = new Source({name: "source", pull});
             const thru = new Through({name: "through", through});
             const sink = new Sink({name: "sink", push});
@@ -80,7 +71,6 @@ describe("utils", function() {
             const walkSpy = spy();
             walkStream(sink, walkSpy);
 
-            console.log("walkSpy.args", walkSpy.args);
             assert.deepEqual(walkSpy.args, [[sink], [thru], [src]]);
         });
     });
@@ -120,7 +110,6 @@ describe("utils", function() {
 
             assert.strictEqual(resolveSpy.callCount, 0);
             assert.strictEqual(rejectSpy.callCount, 1);
-            console.log("args", rejectSpy.args);
             assert.strictEqual(rejectSpy.args[0][0].message, "foo");
         });
     });

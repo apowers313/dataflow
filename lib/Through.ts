@@ -1,7 +1,7 @@
+import {Chunk, ChunkCollection} from "./Chunk";
 import {Component, ComponentOpts} from "./Component";
 import {ReadMethods, Readable, ReadableOpts} from "./Readable";
 import {Writable, WritableOpts, WriteMethods} from "./Writable";
-import {Chunk, ChunkCollection} from "./Chunk";
 import {DeferredPromise} from "./utils";
 
 export type ThroughMethods = ReadMethods & WriteMethods;
@@ -29,16 +29,13 @@ export class Through extends Writable(Readable(Component)) {
         const inputOpts: ThroughSuperOpts = {
             ... opts,
             push: async(data, methods): Promise<void> => {
-                console.log("through top-level push");
                 await this.#throughPush(data, methods);
             },
             pull: async(methods): Promise<void> => {
-                console.log("through top-level pull");
                 await this.#throughPull(methods);
             },
         };
         inputOpts.writeClose = async(): Promise<void> => {
-            console.log("closing readable controller");
             this.readableController.close();
             if (opts.writeClose) {
                 await opts.writeClose();
@@ -56,7 +53,6 @@ export class Through extends Writable(Readable(Component)) {
      * @param _methods - Not used
      */
     async #throughPush(chunk: Chunk|ChunkCollection, _methods: WriteMethods): Promise<void> {
-        console.log(">>> THROUGH push got", chunk);
         this.#writePromise.resolve(chunk);
         await this.#readDone.promise;
         this.#writePromise = new DeferredPromise<Chunk|ChunkCollection>();
@@ -69,9 +65,7 @@ export class Through extends Writable(Readable(Component)) {
      * @param methods - Functions for manipulating the stream and data
      */
     async #throughPull(methods: ReadMethods): Promise<void> {
-        console.log("--- THROUGH PULL");
         const chunk = await this.#writePromise.promise;
-        console.log(">>> THROUGH pull got:", chunk);
 
         if (chunk instanceof ChunkCollection) {
             throw new Error("Through received ChunkCollection. Why?");

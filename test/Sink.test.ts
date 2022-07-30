@@ -91,7 +91,6 @@ describe("Sink", function() {
 
         const args = sinkSpy.args.map((a) => a[0]);
 
-        console.log("args", args);
         const ch0results = [5, 10, 15, 20, 25];
         const ch1results = [13, 26, 39, 52, 65];
         args.forEach((arg, idx) => {
@@ -115,7 +114,6 @@ describe("Sink", function() {
             // await src.init();
             await src.complete();
 
-            console.log("sinkSpy.args", sinkSpy.args);
             assert.strictEqual(sinkSpy.callCount, 13);
             const chunk0 = sinkSpy.args[0][0];
             assert.isTrue(chunk0.isMetadata());

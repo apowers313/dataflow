@@ -42,9 +42,7 @@ class WalkContext {
         }
 
         component.forEach((c) => {
-            console.log("history.has", c.name, this.history.has(c));
             if (!this.history.has(c)) {
-                console.log("adding", c.name);
                 this.remaining.add(c);
             }
         });

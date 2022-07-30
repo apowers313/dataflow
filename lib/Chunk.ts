@@ -165,10 +165,6 @@ export type ChunkCollectionForEachCb = (chunk: Chunk, chNum: number) => void;
 export class ChunkCollection {
     chunks: Map<number, Chunk> = new Map();
 
-    get [Symbol.toStringTag](): string {
-        return "Validator";
-    }
-
     /**
      * Returns the number of chunks in the collection
      */
@@ -218,6 +214,13 @@ export class ChunkCollection {
         this.chunks.forEach(cb);
     }
 
+    /**
+     * Creates a new ChunkCollection containing the specified chunk on all the channels from zero to numChannels-1
+     *
+     * @param chunk - The chunk to send
+     * @param numChannels - The number of channels to send it on
+     * @returns A new ChunkCollection with the chunk added on the specified channels
+     */
     static broadcast(chunk: Chunk, numChannels: number): ChunkCollection {
         const cc = new ChunkCollection();
         for (let i = 0; i < numChannels; i++) {

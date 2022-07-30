@@ -27,8 +27,6 @@ describe("Source", function() {
         it("reads once", async function() {
             const src = new Source({
                 pull: async(methods): Promise<void> => {
-                    console.log("pull");
-
                     const data = Chunk.create({type: "data", data: {foo: "bar"}});
                     await methods.send(0, data);
                 },
@@ -47,8 +45,6 @@ describe("Source", function() {
         it("reads twice", async function() {
             const src = new Source({
                 pull: async(methods): Promise<void> => {
-                    console.log("pull");
-
                     const data = Chunk.create({type: "data", data: {foo: "bar"}});
                     await methods.send(0, data);
                 },
@@ -71,8 +67,6 @@ describe("Source", function() {
         it("reads across channels", async function() {
             const src = new Source({
                 pull: async(methods): Promise<void> => {
-                    console.log("pull");
-
                     const data = Chunk.create({type: "data", data: {foo: "bar"}});
                     const cc = new ChunkCollection();
                     cc.add(0, data);
@@ -183,9 +177,6 @@ describe("Source", function() {
             testSource.channels[1].pipe(sink2);
             await testSource.complete();
 
-            console.log("writeSpy1", writeSpy1.args);
-            console.log("writeSpy2", writeSpy2.args);
-
             assert.strictEqual(writeSpy1.callCount, 11);
             assert.deepEqual(writeSpy1.firstCall.args[0], {type: "data", data: {count: "0-0"}});
             assert.deepEqual(writeSpy1.lastCall.args[0], {type: "data", data: {count: "0-10"}});
@@ -256,7 +247,6 @@ describe("Source", function() {
                 .complete()
                 .then(() => done(new Error("test should not have completed successfully")))
                 .catch((err) => {
-                    console.log("err", err);
                     if (err.message === "Trying to send data on channel without any destations (channel 1). Data will be lost.") {
                         return done();
                     }
@@ -277,7 +267,8 @@ describe("Source", function() {
         const src = new Source({
             pull: async(methods): Promise<void> => {
                 if (!firstPull) {
-                    return methods.finished();
+                    await methods.finished();
+                    return;
                 }
 
                 const chunk = Chunk.create({type: "error", error: new Error("foo"), data: {}});
@@ -293,7 +284,6 @@ describe("Source", function() {
         src.channels[0].pipe(sink);
         await src.complete();
 
-        console.log("pushSpy.args", pushSpy.args);
         assert.strictEqual(pushSpy.callCount, 3);
         const chunk0 = pushSpy.args[0][0];
         assert.isTrue(chunk0.isMetadata());
@@ -329,7 +319,6 @@ describe("Source", function() {
         src.channels[1].pipe(sink2);
         await src.complete();
 
-        console.log("sink1Spy.args", sink1Spy.args);
         assert.strictEqual(sink1Spy.callCount, 3);
         const chunk10 = sink1Spy.args[0][0];
         assert.isTrue(chunk10.isMetadata());
@@ -343,7 +332,6 @@ describe("Source", function() {
         assert.isTrue(chunk12.isMetadata());
         assert.isTrue(chunk12.metadata.has(DataflowEnd));
 
-        console.log("sink2Spy.args", sink2Spy.args);
         assert.strictEqual(sink2Spy.callCount, 3);
         const chunk20 = sink2Spy.args[0][0];
         assert.isTrue(chunk20.isMetadata());
@@ -380,7 +368,6 @@ describe("Source", function() {
         src.channels[1].pipe(sink2);
         await src.complete();
 
-        console.log("sink1Spy.args", sink1Spy.args);
         assert.strictEqual(sink1Spy.callCount, 2);
         const chunk10 = sink1Spy.args[0][0];
         assert.isTrue(chunk10.isMetadata());
@@ -390,7 +377,6 @@ describe("Source", function() {
         assert.isTrue(chunk12.isMetadata());
         assert.isTrue(chunk12.metadata.has(DataflowEnd));
 
-        console.log("sink2Spy.args", sink2Spy.args);
         assert.strictEqual(sink2Spy.callCount, 3);
         const chunk20 = sink2Spy.args[0][0];
         assert.isTrue(chunk20.isMetadata());
@@ -409,21 +395,16 @@ describe("Source", function() {
         let firstPull = true;
         const src = new Source({
             pull: async(methods): Promise<void> => {
-                console.log("--- PULL");
                 if (!firstPull) {
-                    console.log("FINISHED");
-                    return methods.finished();
+                    await methods.finished();
+                    return;
                 }
 
                 const chunk = Chunk.create({type: "metadata"}) as MetadataChunk;
                 chunk.metadata.add(new TestMetadata());
-                console.log("*** Chunk", chunk);
                 const cc = ChunkCollection.broadcast(chunk, this.numChannels);
-                console.log("CC::", cc);
                 cc.add(0, chunk);
-                console.log(">>> PULL SEND");
                 await methods.sendMulti(cc);
-                console.log("<<< PULL SEND");
                 firstPull = false;
             },
             numChannels: 2,
@@ -431,10 +412,8 @@ describe("Source", function() {
         const pushSpy = spy();
         const sink = new Sink({push: pushSpy, writeAll: true});
         src.channels[0].pipe(sink);
-        console.log("src.dests", src.dests);
         await src.complete();
 
-        console.log("pushSpy.args", pushSpy.args);
         assert.strictEqual(pushSpy.callCount, 3);
         const chunk0 = pushSpy.args[0][0];
         assert.isTrue(chunk0.isMetadata());
