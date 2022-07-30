@@ -1,7 +1,7 @@
 import {Component, ComponentOpts} from "./Component";
 import {ReadMethods, Readable, ReadableOpts} from "./Readable";
 import {Writable, WritableOpts, WriteMethods} from "./Writable";
-import {Chunk} from "./Chunk";
+import {Chunk, ChunkCollection} from "./Chunk";
 import {DeferredPromise} from "./utils";
 
 export type ThroughMethods = ReadMethods & WriteMethods;
@@ -17,7 +17,7 @@ type ThroughSuperOpts = ReadableOpts & WritableOpts & ComponentOpts;
  */
 export class Through extends Writable(Readable(Component)) {
     #through: ThroughFn;
-    #writePromise = new DeferredPromise<Chunk>();
+    #writePromise = new DeferredPromise<Chunk|ChunkCollection>();
     #readDone = new DeferredPromise<null>();
 
     /**
@@ -30,11 +30,11 @@ export class Through extends Writable(Readable(Component)) {
             ... opts,
             push: async(data, methods): Promise<void> => {
                 console.log("through top-level push");
-                await this.#throughPush.call(this, data, methods);
+                await this.#throughPush(data, methods);
             },
             pull: async(methods): Promise<void> => {
                 console.log("through top-level pull");
-                await this.#throughPull.call(this, methods);
+                await this.#throughPull(methods);
             },
         };
         inputOpts.writeClose = async(): Promise<void> => {
@@ -55,11 +55,11 @@ export class Through extends Writable(Readable(Component)) {
      * @param chunk - Data received as input
      * @param _methods - Not used
      */
-    async #throughPush(chunk: Chunk, _methods: WriteMethods): Promise<void> {
+    async #throughPush(chunk: Chunk|ChunkCollection, _methods: WriteMethods): Promise<void> {
         console.log(">>> THROUGH push got", chunk);
         this.#writePromise.resolve(chunk);
         await this.#readDone.promise;
-        this.#writePromise = new DeferredPromise<Chunk>();
+        this.#writePromise = new DeferredPromise<Chunk|ChunkCollection>();
         this.#readDone = new DeferredPromise<null>();
     }
 
@@ -72,6 +72,11 @@ export class Through extends Writable(Readable(Component)) {
         console.log("--- THROUGH PULL");
         const chunk = await this.#writePromise.promise;
         console.log(">>> THROUGH pull got:", chunk);
+
+        if (chunk instanceof ChunkCollection) {
+            throw new Error("Through received ChunkCollection. Why?");
+        }
+
         if (chunk.isData()) {
             await this.#through(chunk, methods);
         }

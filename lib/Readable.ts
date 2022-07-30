@@ -16,6 +16,7 @@ export interface ReadableOpts extends ComponentOpts {
     readCancel?: () => Promise<void>;
     numChannels?: number;
     queueSize?: number;
+    errorChannel?: number;
     pull: PullFn;
 }
 
@@ -60,6 +61,7 @@ export function Readable<TBase extends Constructor<Component>>(Base: TBase) {
 
         done = false;
         channels: Array<OutputChannel>;
+        errorChannel: number | null;
         readableController!: ReadableStreamDefaultController<ChunkCollection>;
 
         #pendingReads: Map<Output, DeferredPromise<Chunk>> = new Map();
@@ -82,6 +84,7 @@ export function Readable<TBase extends Constructor<Component>>(Base: TBase) {
 
             this.queueSize = cfg.queueSize ?? 1;
             this.numChannels = cfg.numChannels ?? this.numChannels;
+            this.errorChannel = cfg.errorChannel ?? null;
             this.channels = new Array(this.numChannels)
                 .fill(null)
                 .map((_o: unknown, idx: number) => new OutputChannel({chNum: idx, parent: this}));
@@ -102,9 +105,25 @@ export function Readable<TBase extends Constructor<Component>>(Base: TBase) {
                     }
                 },
                 pull: async(): Promise<void> => {
-                    console.log("xxx pull");
-                    console.log("desiredSize", this.readableController.desiredSize);
-                    return this.#pull(this.readMethods);
+                    try {
+                        await this.#pull(this.readMethods);
+                    } catch (err) {
+                        if (!(err instanceof Error)) {
+                            // TODO: what should we do with a non-Error? dunno, just throw it for now
+                            throw err;
+                        }
+
+                        const errChunk = Chunk.create({type: "error", error: err, data: null});
+                        let cc: ChunkCollection;
+                        if (this.errorChannel !== null) {
+                            cc = new ChunkCollection();
+                            cc.add(this.errorChannel, errChunk);
+                        } else {
+                            cc = ChunkCollection.broadcast(errChunk, this.numChannels);
+                        }
+
+                        await this.sendMulti(cc);
+                    }
                 },
                 cancel: cfg.readCancel,
             }, new CountQueuingStrategy({highWaterMark: this.queueSize}));

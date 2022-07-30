@@ -245,7 +245,7 @@ describe("Source", function() {
             assert.deepEqual(writeSpy3.lastCall.args[0], {type: "data", data: {count: "1-10"}});
         });
 
-        it("to two sinks, one isn't connected", function(done) {
+        it("to two channels, one isn't connected", function(done) {
             const testSource = new TestRoute({numChannels: 2, outputType: "broadcast"});
             const writeSpy1 = spy();
             const sink1 = new Sink({push: writeSpy1});
@@ -306,6 +306,103 @@ describe("Source", function() {
         const chunk2 = pushSpy.args[2][0];
         assert.isTrue(chunk2.isMetadata());
         assert.isTrue(chunk2.metadata.has(DataflowEnd));
+    });
+
+    it("broadcasts thrown error", async function() {
+        let firstPull = true;
+        const src = new Source({
+            pull: async(methods): Promise<void> => {
+                if (!firstPull) {
+                    return methods.finished();
+                }
+
+                firstPull = false;
+                throw new Error("bummer!");
+            },
+            numChannels: 2,
+        });
+        const sink1Spy = spy();
+        const sink1 = new Sink({push: sink1Spy, writeAll: true});
+        const sink2Spy = spy();
+        const sink2 = new Sink({push: sink2Spy, writeAll: true});
+        src.channels[0].pipe(sink1);
+        src.channels[1].pipe(sink2);
+        await src.complete();
+
+        console.log("sink1Spy.args", sink1Spy.args);
+        assert.strictEqual(sink1Spy.callCount, 3);
+        const chunk10 = sink1Spy.args[0][0];
+        assert.isTrue(chunk10.isMetadata());
+        assert.isTrue(chunk10.metadata.has(DataflowStart));
+
+        const chunk11 = sink1Spy.args[1][0];
+        assert.isTrue(chunk11.isError());
+        assert.strictEqual(chunk11.error.message, "bummer!");
+
+        const chunk12 = sink1Spy.args[2][0];
+        assert.isTrue(chunk12.isMetadata());
+        assert.isTrue(chunk12.metadata.has(DataflowEnd));
+
+        console.log("sink2Spy.args", sink2Spy.args);
+        assert.strictEqual(sink2Spy.callCount, 3);
+        const chunk20 = sink2Spy.args[0][0];
+        assert.isTrue(chunk20.isMetadata());
+        assert.isTrue(chunk20.metadata.has(DataflowStart));
+
+        const chunk21 = sink2Spy.args[1][0];
+        assert.isTrue(chunk21.isError());
+        assert.strictEqual(chunk21.error.message, "bummer!");
+
+        const chunk22 = sink2Spy.args[2][0];
+        assert.isTrue(chunk22.isMetadata());
+        assert.isTrue(chunk22.metadata.has(DataflowEnd));
+    });
+
+    it("sends thrown error to error channel", async function() {
+        let firstPull = true;
+        const src = new Source({
+            pull: async(methods): Promise<void> => {
+                if (!firstPull) {
+                    return methods.finished();
+                }
+
+                firstPull = false;
+                throw new Error("bummer!");
+            },
+            numChannels: 2,
+            errorChannel: 1,
+        });
+        const sink1Spy = spy();
+        const sink1 = new Sink({push: sink1Spy, writeAll: true});
+        const sink2Spy = spy();
+        const sink2 = new Sink({push: sink2Spy, writeAll: true});
+        src.channels[0].pipe(sink1);
+        src.channels[1].pipe(sink2);
+        await src.complete();
+
+        console.log("sink1Spy.args", sink1Spy.args);
+        assert.strictEqual(sink1Spy.callCount, 2);
+        const chunk10 = sink1Spy.args[0][0];
+        assert.isTrue(chunk10.isMetadata());
+        assert.isTrue(chunk10.metadata.has(DataflowStart));
+
+        const chunk12 = sink1Spy.args[1][0];
+        assert.isTrue(chunk12.isMetadata());
+        assert.isTrue(chunk12.metadata.has(DataflowEnd));
+
+        console.log("sink2Spy.args", sink2Spy.args);
+        assert.strictEqual(sink2Spy.callCount, 3);
+        const chunk20 = sink2Spy.args[0][0];
+        assert.isTrue(chunk20.isMetadata());
+        assert.isTrue(chunk20.metadata.has(DataflowStart));
+
+        const chunk21 = sink2Spy.args[1][0];
+        assert.isTrue(chunk21.isError());
+        assert.strictEqual(chunk21.error.message, "bummer!");
+
+        const chunk22 = sink2Spy.args[2][0];
+        assert.isTrue(chunk22.isMetadata());
+        assert.isTrue(chunk22.metadata.has(DataflowEnd));
     });
 
     it("silently drops metadata to disconnected channel", async function() {
