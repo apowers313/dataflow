@@ -271,7 +271,7 @@ describe("Source", function() {
                     return;
                 }
 
-                const chunk = Chunk.create({type: "error", error: new Error("foo"), data: {}});
+                const chunk = Chunk.create({type: "error", error: new Error("foo"), data: null});
                 const cc = ChunkCollection.broadcast(chunk, this.numChannels);
                 cc.add(0, chunk);
                 await methods.sendMulti(cc);

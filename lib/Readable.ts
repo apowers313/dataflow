@@ -109,7 +109,13 @@ export function Readable<TBase extends Constructor<Component>>(Base: TBase) {
             this.#reader = this.#readableStream.getReader();
         }
 
-        protected async handleCaughtError(err: unknown, chunk: Chunk|null): Promise<void> {
+        /**
+         * Internal method for handling errors that are thrown by user-defined pull or through methods
+         *
+         * @param err - The error to handle. Should be an instance of Error, but sometimes fools throw crazy things...
+         * @param chunk - If the user-defined function was handling a chunk, this is the chunk that caused the error
+         */
+        async handleCaughtError(err: unknown, chunk: Chunk|null): Promise<void> {
             if (!(err instanceof Error)) {
                 // TODO: what should we do with a non-Error? dunno, just throw it for now
                 throw err;

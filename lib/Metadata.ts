@@ -59,11 +59,21 @@ export class MetadataCollection {
         return this.#collection.length;
     }
 
+    /**
+     * Converts this object to a human-readable string
+     *
+     * @returns String representing the metadata
+     */
     toString(): string {
         const metadataNames = this.#collection.map((mt) => `"${mt.constructor.name}"`);
         return `MetadataCollection [${metadataNames.join(" ")}]`;
     }
 
+    /**
+     * Node.js's util.inpsect() looks for this symbol when converting objects to strings.
+     *
+     * @returns A string for node.js's util.inspect
+     */
     [inspectSymbol](): string {
         return this.toString();
     }
