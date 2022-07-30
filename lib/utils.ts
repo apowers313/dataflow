@@ -70,20 +70,15 @@ export type WalkCallbackFn = (c: Component) => void;
  * @param ctx - Used internally for tracking state throughout recursion.
  */
 export function walkStream(c: Component, cb: WalkCallbackFn, ctx?: WalkContext): void {
-    console.log("WALKING:", c.name);
     if (!ctx) {
         ctx = new WalkContext();
     }
 
     if (isReadable(c)) {
-        console.log("isReadable");
-        console.log("c.dests", c.dests);
         ctx.add(c.dests);
     }
 
     if (isWritable(c)) {
-        console.log("isWritable");
-        console.log("c.srcs", c.srcs);
         ctx.add(c.srcs);
     }
 
@@ -92,7 +87,6 @@ export function walkStream(c: Component, cb: WalkCallbackFn, ctx?: WalkContext):
 
     const next = ctx.get();
     if (!next) {
-        console.log("no next, done");
         return;
     }
 

@@ -10,9 +10,8 @@ export class Sink extends Writable(Component) {
      *
      * @param opts - Options for the Sink
      */
+    // eslint-disable-next-line no-useless-constructor
     constructor(opts: WritableOpts) {
         super(opts);
-
-        console.log("sink!");
     }
 }

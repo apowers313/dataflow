@@ -49,13 +49,9 @@ export class Source extends Readable(Component) {
             },
         };
 
-        console.log(">>> SUPER");
         super(inputOpts);
-        console.log("<<< SUPER");
         this.#sourcePull = opts.pull;
         this.sendStartMetadata = opts.sendStartMetadata ?? true;
-
-        console.log("this.methods", this.readMethods);
     }
 
     /**
