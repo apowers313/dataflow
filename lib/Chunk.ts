@@ -110,7 +110,7 @@ export class DataChunk extends Chunk {
 
 export interface ErrorChunkOptions {
     type: "error";
-    data: ChunkData | null;
+    data: Chunk | null;
     error: Error;
 }
 
@@ -118,7 +118,7 @@ export interface ErrorChunkOptions {
  * Represents data that has become an error
  */
 export class ErrorChunk extends Chunk {
-    data: ChunkData | null;
+    data: Chunk | null;
     error: Error;
     type: ChunkType = "error";
 

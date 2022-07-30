@@ -7,6 +7,7 @@ import {DeferredPromise} from "./utils";
 export type ThroughMethods = ReadMethods & WriteMethods;
 export type ThroughFn = (chunk: Chunk, methods: ThroughMethods) => Promise<void>
 export interface ThroughOpts extends Omit<ReadableOpts, "pull">, Omit<WritableOpts, "push"> {
+    catchAll?: boolean;
     through: ThroughFn;
 }
 
@@ -16,6 +17,7 @@ type ThroughSuperOpts = ReadableOpts & WritableOpts & ComponentOpts;
  * A component that reads data from a input, acts on it, and then passes it to an output
  */
 export class Through extends Writable(Readable(Component)) {
+    catchAll: boolean;
     #through: ThroughFn;
     #writePromise = new DeferredPromise<Chunk|ChunkCollection>();
     #readDone = new DeferredPromise<null>();
@@ -34,6 +36,7 @@ export class Through extends Writable(Readable(Component)) {
             pull: async(methods): Promise<void> => {
                 await this.#throughPull(methods);
             },
+            writeAll: true,
         };
         inputOpts.writeClose = async(): Promise<void> => {
             this.readableController.close();
@@ -43,6 +46,7 @@ export class Through extends Writable(Readable(Component)) {
         };
         super(inputOpts);
 
+        this.catchAll = opts.catchAll ?? false;
         this.#through = opts.through;
     }
 
@@ -71,8 +75,16 @@ export class Through extends Writable(Readable(Component)) {
             throw new Error("Through received ChunkCollection. Why?");
         }
 
-        if (chunk.isData()) {
-            await this.#through(chunk, methods);
+        if (chunk.isData() || this.catchAll) {
+            try {
+                await this.#through(chunk, methods);
+            } catch (err) {
+                await this.handleCaughtError(err, chunk);
+            }
+        } else {
+            // pass through metadata and errors on all channels by default
+            const cc = ChunkCollection.broadcast(chunk, this.numChannels);
+            await this.sendMulti(cc);
         }
 
         this.#readDone.resolve(null);

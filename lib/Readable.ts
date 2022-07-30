@@ -101,26 +101,30 @@ export function Readable<TBase extends Constructor<Component>>(Base: TBase) {
                     try {
                         await this.#pull(this.readMethods);
                     } catch (err) {
-                        if (!(err instanceof Error)) {
-                            // TODO: what should we do with a non-Error? dunno, just throw it for now
-                            throw err;
-                        }
-
-                        const errChunk = Chunk.create({type: "error", error: err, data: null});
-                        let cc: ChunkCollection;
-                        if (this.errorChannel !== null) {
-                            cc = new ChunkCollection();
-                            cc.add(this.errorChannel, errChunk);
-                        } else {
-                            cc = ChunkCollection.broadcast(errChunk, this.numChannels);
-                        }
-
-                        await this.sendMulti(cc);
+                        await this.handleCaughtError(err, null);
                     }
                 },
                 cancel: cfg.readCancel,
             }, new CountQueuingStrategy({highWaterMark: this.queueSize}));
             this.#reader = this.#readableStream.getReader();
+        }
+
+        protected async handleCaughtError(err: unknown, chunk: Chunk|null): Promise<void> {
+            if (!(err instanceof Error)) {
+                // TODO: what should we do with a non-Error? dunno, just throw it for now
+                throw err;
+            }
+
+            const errChunk = Chunk.create({type: "error", error: err, data: chunk});
+            let cc: ChunkCollection;
+            if (this.errorChannel !== null) {
+                cc = new ChunkCollection();
+                cc.add(this.errorChannel, errChunk);
+            } else {
+                cc = ChunkCollection.broadcast(errChunk, this.numChannels);
+            }
+
+            await this.sendMulti(cc);
         }
 
         /**

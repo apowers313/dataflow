@@ -428,6 +428,8 @@ describe("Source", function() {
         assert.isTrue(chunk2.metadata.has(DataflowEnd));
     });
 
+    it("throws error if data is sent to disconnected channel");
+
     describe("queueSize", function() {
         it("defaults to 1", async function() {
             let desiredSize = 0;
