@@ -120,7 +120,7 @@ describe("Through", function() {
         assert.strictEqual(sinkSpy.callCount, 5);
         const chunk0 = sinkSpy.args[0][0];
         assert.isTrue(chunk0.isMetadata());
-        assert.isTrue(chunk0.metadata.has(DataflowStart));
+        assert.isTrue(chunk0.metadata.has("dataflow", "start"));
 
         const chunk1 = sinkSpy.args[1][0];
         assert.isTrue(chunk1.isData());
@@ -136,7 +136,7 @@ describe("Through", function() {
 
         const chunk4 = sinkSpy.args[4][0];
         assert.isTrue(chunk4.isMetadata());
-        assert.isTrue(chunk4.metadata.has(DataflowEnd));
+        assert.isTrue(chunk4.metadata.has("dataflow", "end"));
     });
 
     it("passes through metadata", async function() {
@@ -199,7 +199,7 @@ describe("Through", function() {
         assert.strictEqual(sinkSpy.callCount, 5);
         const chunk0 = sinkSpy.args[0][0];
         assert.isTrue(chunk0.isMetadata());
-        assert.isTrue(chunk0.metadata.has(DataflowStart));
+        assert.isTrue(chunk0.metadata.has("dataflow", "start"));
 
         const chunk1 = sinkSpy.args[1][0];
         assert.isTrue(chunk1.isData());
@@ -207,7 +207,7 @@ describe("Through", function() {
 
         const chunk2 = sinkSpy.args[2][0];
         assert.isTrue(chunk2.isMetadata());
-        assert.isTrue(chunk2.metadata.has(TestMetadata));
+        assert.isTrue(chunk2.metadata.has("testspace", "test"));
 
         const chunk3 = sinkSpy.args[3][0];
         assert.isTrue(chunk3.isData());
@@ -215,7 +215,7 @@ describe("Through", function() {
 
         const chunk4 = sinkSpy.args[4][0];
         assert.isTrue(chunk4.isMetadata());
-        assert.isTrue(chunk4.metadata.has(DataflowEnd));
+        assert.isTrue(chunk4.metadata.has("dataflow", "end"));
     });
 
     it("catches error", async function() {
@@ -282,7 +282,7 @@ describe("Through", function() {
         assert.strictEqual(sinkSpy.callCount, 5);
         const chunk0 = sinkSpy.args[0][0];
         assert.isTrue(chunk0.isMetadata());
-        assert.isTrue(chunk0.metadata.has(DataflowStart));
+        assert.isTrue(chunk0.metadata.has("dataflow", "start"));
 
         const chunk1 = sinkSpy.args[1][0];
         assert.isTrue(chunk1.isData());
@@ -299,7 +299,7 @@ describe("Through", function() {
 
         const chunk4 = sinkSpy.args[4][0];
         assert.isTrue(chunk4.isMetadata());
-        assert.isTrue(chunk4.metadata.has(DataflowEnd));
+        assert.isTrue(chunk4.metadata.has("dataflow", "end"));
     });
 
     describe("catchAll", function() {
@@ -357,7 +357,7 @@ describe("Through", function() {
             assert.strictEqual(thruSpy.callCount, 5);
             const thru0 = thruSpy.args[0][0];
             assert.isTrue(thru0.isMetadata());
-            assert.isTrue(thru0.metadata.has(DataflowStart));
+            assert.isTrue(thru0.metadata.has("dataflow", "start"));
 
             const thru1 = thruSpy.args[1][0];
             assert.isTrue(thru1.isData());
@@ -369,17 +369,17 @@ describe("Through", function() {
 
             const thru3 = thruSpy.args[3][0];
             assert.isTrue(thru3.isMetadata());
-            assert.isTrue(thru3.metadata.has(TestMetadata));
+            assert.isTrue(thru3.metadata.has("testspace", "test"));
 
             const thru4 = thruSpy.args[4][0];
             assert.isTrue(thru4.isMetadata());
-            assert.isTrue(thru4.metadata.has(DataflowEnd));
+            assert.isTrue(thru4.metadata.has("dataflow", "end"));
 
             // sink
             assert.strictEqual(sinkSpy.callCount, 5);
             const chunk0 = sinkSpy.args[0][0];
             assert.isTrue(chunk0.isMetadata());
-            assert.isTrue(chunk0.metadata.has(DataflowStart));
+            assert.isTrue(chunk0.metadata.has("dataflow", "start"));
 
             const chunk1 = sinkSpy.args[1][0];
             assert.isTrue(chunk1.isData());
@@ -391,11 +391,11 @@ describe("Through", function() {
 
             const chunk3 = sinkSpy.args[3][0];
             assert.isTrue(chunk3.isMetadata());
-            assert.isTrue(chunk3.metadata.has(TestMetadata));
+            assert.isTrue(chunk3.metadata.has("testspace", "test"));
 
             const chunk4 = sinkSpy.args[4][0];
             assert.isTrue(chunk4.isMetadata());
-            assert.isTrue(chunk4.metadata.has(DataflowEnd));
+            assert.isTrue(chunk4.metadata.has("dataflow", "end"));
         });
     });
 });

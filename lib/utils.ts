@@ -133,3 +133,5 @@ export function promiseState(p: Promise<unknown>): Promise<PromiseState> {
 }
 
 export const inspectSymbol = Symbol.for("nodejs.util.inspect.custom");
+
+export class DataflowError extends Error {}

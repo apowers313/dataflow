@@ -2,7 +2,6 @@ import {Chunk, ChunkCollection} from "./Chunk";
 import {Component, ComponentOpts} from "./Component";
 import {CountQueuingStrategy, WritableStream} from "node:stream/web";
 import type {Output, ReadableType} from "./Readable";
-import {DataflowEnd} from "./Metadata";
 import {promiseState} from "./utils";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -142,7 +141,7 @@ export function Writable<TBase extends Constructor<Component>>(Base: TBase) {
                 // backward-loop removing dead streams; forward-removing would make indexes invalid
                 for (let i = results.length - 1; i >= 0; i--) {
                     const chunk = results[i];
-                    if (chunk !== null && chunk.isMetadata() && chunk.metadata.has(DataflowEnd)) {
+                    if (chunk !== null && chunk.isMetadata() && chunk.metadata.has("dataflow", "end")) {
                         removeReader(i);
                     }
                 }

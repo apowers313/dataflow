@@ -1,8 +1,8 @@
 import {Chunk, ChunkCollection, MetadataChunk} from "./Chunk";
 import {Component, ComponentOpts} from "./Component";
 import {CountQueuingStrategy, ReadableStream} from "node:stream/web";
+import {DataflowError, DeferredPromise} from "./utils";
 import {DataflowEnd} from "./Metadata";
-import {DeferredPromise} from "./utils";
 import type {WritableType} from "./Writable";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -121,6 +121,11 @@ export function Readable<TBase extends Constructor<Component>>(Base: TBase) {
                 throw err;
             }
 
+            // pass through our internal errors
+            if (err instanceof DataflowError) {
+                throw err;
+            }
+
             const errChunk = Chunk.create({type: "error", error: err, data: chunk});
             let cc: ChunkCollection;
             if (this.errorChannel !== null) {
@@ -228,7 +233,7 @@ export function Readable<TBase extends Constructor<Component>>(Base: TBase) {
                 if (this.channels[chNum].numDests === 0) {
                     // throw an error if trying to send data on a channel with no destinations
                     if (chunk.isData()) {
-                        throw new Error(`Trying to send data on channel without any destations (channel ${chNum}). Data will be lost.`);
+                        throw new DataflowError(`Trying to send data on channel without any destations (channel ${chNum}). Data will be lost.`);
                     }
 
                     // if sending metadata or an error, just silently drop the chunk

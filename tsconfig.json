@@ -19,6 +19,7 @@
         "inlineSources": false,
         "noImplicitAny": true,
         "strictNullChecks": true,
+        "experimentalDecorators": true,
         "types": [
             "node",
             "mocha",

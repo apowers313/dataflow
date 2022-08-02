@@ -73,7 +73,7 @@ export class Source extends Readable(Component) {
     async init(): Promise<void> {
         if (this.sendStartMetadata) {
             const mds = Chunk.create({type: "metadata"}) as MetadataChunk;
-            mds.metadata.add(new DataflowStart());
+            mds.metadata.add(new DataflowStart(this.name));
             const cc = ChunkCollection.broadcast(mds, this.numChannels);
             this.readableController.enqueue(cc);
         }

@@ -129,6 +129,9 @@ export class TestRoute extends Source {
 }
 
 export class TestMetadata extends MetadataType {
-    name = "test";
     value = "testy";
+
+    constructor() {
+        super({namespace: "testspace", name: "test"});
+    }
 }

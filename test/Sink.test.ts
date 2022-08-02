@@ -1,4 +1,4 @@
-import {Chunk, ChunkCollection, DataflowEnd, DataflowStart, Sink} from "../index";
+import {Chunk, ChunkCollection, DataflowEnd, Sink} from "../index";
 import {TestSource, push} from "./helpers/helpers";
 import {assert} from "chai";
 import {spy} from "sinon";
@@ -117,12 +117,12 @@ describe("Sink", function() {
             assert.strictEqual(sinkSpy.callCount, 13);
             const chunk0 = sinkSpy.args[0][0];
             assert.isTrue(chunk0.isMetadata());
-            assert.isTrue(chunk0.metadata.has(DataflowStart));
+            assert.isTrue(chunk0.metadata.has("dataflow", "start"));
             assert.deepEqual(sinkSpy.args[1][0], {type: "data", data: {count: 0}});
             assert.deepEqual(sinkSpy.args[11][0], {type: "data", data: {count: 10}});
             const chunk12 = sinkSpy.args[12][0];
             assert.isTrue(chunk12.isMetadata());
-            assert.isTrue(chunk12.metadata.has(DataflowEnd));
+            assert.isTrue(chunk12.metadata.has("dataflow", "end"));
         });
         it("catches errors");
     });

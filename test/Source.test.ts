@@ -1,5 +1,6 @@
-import {Chunk, ChunkCollection, DataflowEnd, DataflowStart, MetadataChunk, Sink, Source, Through} from "../index";
+import {Chunk, ChunkCollection, MetadataChunk, Sink, Source, Through} from "../index";
 import {TestMetadata, TestRoute, TestSource, pull, push, through} from "./helpers/helpers";
+import {Component} from "../lib/Component";
 import {assert} from "chai";
 import {spy} from "sinon";
 
@@ -245,7 +246,9 @@ describe("Source", function() {
 
             testSource
                 .complete()
-                .then(() => done(new Error("test should not have completed successfully")))
+                .then(() => {
+                    done(new Error("test should not have completed successfully"));
+                })
                 .catch((err) => {
                     if (err.message === "Trying to send data on channel without any destations (channel 1). Data will be lost.") {
                         return done();
@@ -287,7 +290,7 @@ describe("Source", function() {
         assert.strictEqual(pushSpy.callCount, 3);
         const chunk0 = pushSpy.args[0][0];
         assert.isTrue(chunk0.isMetadata());
-        assert.isTrue(chunk0.metadata.has(DataflowStart));
+        assert.isTrue(chunk0.metadata.has("dataflow", "start"));
 
         const chunk1 = pushSpy.args[1][0];
         assert.isTrue(chunk1.isError());
@@ -295,7 +298,7 @@ describe("Source", function() {
 
         const chunk2 = pushSpy.args[2][0];
         assert.isTrue(chunk2.isMetadata());
-        assert.isTrue(chunk2.metadata.has(DataflowEnd));
+        assert.isTrue(chunk2.metadata.has("dataflow", "end"));
     });
 
     it("broadcasts thrown error", async function() {
@@ -322,7 +325,7 @@ describe("Source", function() {
         assert.strictEqual(sink1Spy.callCount, 3);
         const chunk10 = sink1Spy.args[0][0];
         assert.isTrue(chunk10.isMetadata());
-        assert.isTrue(chunk10.metadata.has(DataflowStart));
+        assert.isTrue(chunk10.metadata.has("dataflow", "start"));
 
         const chunk11 = sink1Spy.args[1][0];
         assert.isTrue(chunk11.isError());
@@ -330,12 +333,12 @@ describe("Source", function() {
 
         const chunk12 = sink1Spy.args[2][0];
         assert.isTrue(chunk12.isMetadata());
-        assert.isTrue(chunk12.metadata.has(DataflowEnd));
+        assert.isTrue(chunk12.metadata.has("dataflow", "end"));
 
         assert.strictEqual(sink2Spy.callCount, 3);
         const chunk20 = sink2Spy.args[0][0];
         assert.isTrue(chunk20.isMetadata());
-        assert.isTrue(chunk20.metadata.has(DataflowStart));
+        assert.isTrue(chunk20.metadata.has("dataflow", "start"));
 
         const chunk21 = sink2Spy.args[1][0];
         assert.isTrue(chunk21.isError());
@@ -343,7 +346,7 @@ describe("Source", function() {
 
         const chunk22 = sink2Spy.args[2][0];
         assert.isTrue(chunk22.isMetadata());
-        assert.isTrue(chunk22.metadata.has(DataflowEnd));
+        assert.isTrue(chunk22.metadata.has("dataflow", "end"));
     });
 
     it("sends thrown error to error channel", async function() {
@@ -371,16 +374,16 @@ describe("Source", function() {
         assert.strictEqual(sink1Spy.callCount, 2);
         const chunk10 = sink1Spy.args[0][0];
         assert.isTrue(chunk10.isMetadata());
-        assert.isTrue(chunk10.metadata.has(DataflowStart));
+        assert.isTrue(chunk10.metadata.has("dataflow", "start"));
 
         const chunk12 = sink1Spy.args[1][0];
         assert.isTrue(chunk12.isMetadata());
-        assert.isTrue(chunk12.metadata.has(DataflowEnd));
+        assert.isTrue(chunk12.metadata.has("dataflow", "end"));
 
         assert.strictEqual(sink2Spy.callCount, 3);
         const chunk20 = sink2Spy.args[0][0];
         assert.isTrue(chunk20.isMetadata());
-        assert.isTrue(chunk20.metadata.has(DataflowStart));
+        assert.isTrue(chunk20.metadata.has("dataflow", "start"));
 
         const chunk21 = sink2Spy.args[1][0];
         assert.isTrue(chunk21.isError());
@@ -388,7 +391,7 @@ describe("Source", function() {
 
         const chunk22 = sink2Spy.args[2][0];
         assert.isTrue(chunk22.isMetadata());
-        assert.isTrue(chunk22.metadata.has(DataflowEnd));
+        assert.isTrue(chunk22.metadata.has("dataflow", "end"));
     });
 
     it("silently drops metadata to disconnected channel", async function() {
@@ -417,15 +420,15 @@ describe("Source", function() {
         assert.strictEqual(pushSpy.callCount, 3);
         const chunk0 = pushSpy.args[0][0];
         assert.isTrue(chunk0.isMetadata());
-        assert.isTrue(chunk0.metadata.has(DataflowStart));
+        assert.isTrue(chunk0.metadata.has("dataflow", "start"));
 
         const chunk1 = pushSpy.args[1][0];
         assert.isTrue(chunk1.isMetadata());
-        assert.isTrue(chunk1.metadata.has(TestMetadata));
+        assert.isTrue(chunk1.metadata.has("testspace", "test"));
 
         const chunk2 = pushSpy.args[2][0];
         assert.isTrue(chunk2.isMetadata());
-        assert.isTrue(chunk2.metadata.has(DataflowEnd));
+        assert.isTrue(chunk2.metadata.has("dataflow", "end"));
     });
 
     it("throws error if data is sent to disconnected channel");
@@ -456,6 +459,40 @@ describe("Source", function() {
             await src.complete();
             assert.strictEqual(desiredSize, 5);
             assert.strictEqual(src.queueSize, 5);
+        });
+
+        it("delete me", function() {
+            const src = new Source({
+                pull,
+                queueSize: 5,
+                sendStartMetadata: false,
+            });
+            const pushSpy = spy();
+            const sink = new Sink({push: pushSpy, writeAll: true});
+            const thru = new Through({through, name: "thru"});
+
+            class NodeRedSource {}
+
+            class NodeRedSink {}
+
+            class NodeRedThrough {}
+
+            type x = Source
+            type Foo = typeof src extends Source ? NodeRedSource : NodeRedSink;
+
+            type NodeRedCorrespondingType<T extends Component> =
+                T extends Through ? NodeRedThrough :
+                T extends Source ? NodeRedSource :
+                NodeRedSink
+
+            function foo<T extends Component>(t: T): NodeRedCorrespondingType<T> {
+                return t as any;
+            }
+
+            type z = NodeRedCorrespondingType<Sink>
+            const r1 = foo(src);
+            const r2 = foo(sink);
+            const r3 = foo(thru);
         });
     });
 });
