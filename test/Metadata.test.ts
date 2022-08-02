@@ -98,6 +98,9 @@ describe("Metadata", function() {
             assert.isTrue(MetadataRegistry.has("dataflow", "start"));
 
             const desc = MetadataRegistry.reverseLookup(DataflowStart);
+            assert.strictEqual(desc.length, 1);
+            assert.strictEqual(desc[0].namespace, "dataflow");
+            assert.strictEqual(desc[0].name, "start");
         });
 
         it("has DataflowEnd");

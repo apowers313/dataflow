@@ -1,4 +1,4 @@
-import {Chunk, ChunkCollection, DataflowEnd, Sink} from "../index";
+import {Chunk, ChunkCollection, Sink} from "../index";
 import {TestSource, push} from "./helpers/helpers";
 import {assert} from "chai";
 import {spy} from "sinon";

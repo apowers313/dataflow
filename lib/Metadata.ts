@@ -18,6 +18,11 @@ export abstract class MetadataType {
     value: unknown;
     registered = false;
 
+    /**
+     * Creates a new MetadataType
+     *
+     * @param opts - Options for the metadata type
+     */
     constructor(opts: MetadataTypeOpts) {
         this.name = opts.name;
         this.namespace = opts.namespace;
@@ -27,10 +32,22 @@ export abstract class MetadataType {
         }
     }
 
+    /**
+     * Type Guard for specific sub-types
+     *
+     * @param type - The type to validate
+     * @returns - True if this object is the specified type. Also casts the type to the specified type.
+     */
     is<T extends MetadataTypeConstructor>(type: T): type is T {
         return this instanceof type;
     }
 
+    /**
+     * Asserts the sub-type of the object, Acts as a Type Guard.
+     *
+     * @param type - The type to validate
+     * @returns - The specified type
+     */
     mustBe<T extends MetadataTypeConstructor>(type: T): T {
         if (!(this instanceof type)) {
             throw new TypeError(`expected type to be ${type}`);
@@ -125,17 +142,40 @@ export interface NamespaceDescriptor {
     name: string;
 }
 
+/**
+ * A registry singleton for metadata types
+ */
 export class MetadataRegistry {
     static namespaces: Map<string, Map<string, MetadataTypeConstructor>> = new Map();
 
+    /**
+     * Finds and returns the specified namespace / name pair
+     *
+     * @param namespace - The namespace to lookup
+     * @param name - The name of the type to look up
+     * @returns The constructor for the class of the specified type
+     */
     static lookup(namespace: string, name: string): MetadataTypeConstructor | undefined {
         return MetadataRegistry.namespaces.get(namespace)?.get(name);
     }
 
+    /**
+     * Returns true of the specified namespace / name pair is defined in the registry
+     *
+     * @param namespace  - The namespace to lookup
+     * @param name - The name to look up
+     * @returns True if the specified namespace / name pair is found
+     */
     static has(namespace: string, name: string): boolean {
         return !!this.lookup(namespace, name);
     }
 
+    /**
+     * Uses a class constructor to lookup all matching namespace / name pairs
+     *
+     * @param c - The constructor to use for the lookup
+     * @returns An array of matching namespace / name pairs that are associated with the constructor
+     */
     static reverseLookup(c: MetadataTypeConstructor): Array<NamespaceDescriptor> {
         const nsMaps = [... MetadataRegistry.namespaces];
         const namesMaps = nsMaps.map((m) => {
@@ -153,6 +193,13 @@ export class MetadataRegistry {
         });
     }
 
+    /**
+     * Registers a new type at the specified namespace / name pair
+     *
+     * @param namespace - The namespace to use for registration. Will be created if it doesn't already exist.
+     * @param name - The name of the type to use for registration
+     * @param type - The MetadataType constructor to register
+     */
     static register(namespace: string, name: string, type: MetadataTypeConstructor): void {
         let nsMap = MetadataRegistry.namespaces.get(namespace);
 
@@ -173,6 +220,11 @@ export class MetadataRegistry {
  * A metadata element indicating that the stream has successfully started
  */
 export class DataflowStart extends MetadataType {
+    /**
+     * Creates a new DataflowStart metadata object
+     *
+     * @param sourceName - The name of the Source that has started emitting Chunks
+     */
     constructor(sourceName: string) {
         super({namespace: "dataflow", name: "start"});
         this.value = sourceName;
@@ -185,6 +237,9 @@ export class DataflowStart extends MetadataType {
 export class DataflowEnd extends MetadataType {
     value = "end";
 
+    /**
+     * Creates a new DataflowEnd metadata object
+     */
     constructor() {
         super({namespace: "dataflow", name: "end"});
     }

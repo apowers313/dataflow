@@ -1,6 +1,5 @@
 import {Chunk, ChunkCollection, MetadataChunk, Sink, Source, Through} from "../index";
 import {TestMetadata, TestRoute, TestSource, pull, push, through} from "./helpers/helpers";
-import {Component} from "../lib/Component";
 import {assert} from "chai";
 import {spy} from "sinon";
 
@@ -459,40 +458,6 @@ describe("Source", function() {
             await src.complete();
             assert.strictEqual(desiredSize, 5);
             assert.strictEqual(src.queueSize, 5);
-        });
-
-        it("delete me", function() {
-            const src = new Source({
-                pull,
-                queueSize: 5,
-                sendStartMetadata: false,
-            });
-            const pushSpy = spy();
-            const sink = new Sink({push: pushSpy, writeAll: true});
-            const thru = new Through({through, name: "thru"});
-
-            class NodeRedSource {}
-
-            class NodeRedSink {}
-
-            class NodeRedThrough {}
-
-            type x = Source
-            type Foo = typeof src extends Source ? NodeRedSource : NodeRedSink;
-
-            type NodeRedCorrespondingType<T extends Component> =
-                T extends Through ? NodeRedThrough :
-                T extends Source ? NodeRedSource :
-                NodeRedSink
-
-            function foo<T extends Component>(t: T): NodeRedCorrespondingType<T> {
-                return t as any;
-            }
-
-            type z = NodeRedCorrespondingType<Sink>
-            const r1 = foo(src);
-            const r2 = foo(sink);
-            const r3 = foo(thru);
         });
     });
 });
